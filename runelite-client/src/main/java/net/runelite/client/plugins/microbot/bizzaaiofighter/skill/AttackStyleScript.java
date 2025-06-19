@@ -70,6 +70,9 @@ public class AttackStyleScript extends Script {
             if (!Microbot.isLoggedIn() || !super.run() || disableIfMaxed(config.toggleDisableOnMaxCombat()))
                 return;
 
+            // Always sync the hard attack style with the current configuration
+            hardAttackStyle = config.hardAttackStyle();
+
 
             // Initialize levels if not done yet
             if (!initializedLevels) {
@@ -92,6 +95,21 @@ public class AttackStyleScript extends Script {
                 return;
             }
 
+            // Always update attack style information
+            updateAttackStyleInfo();
+
+            // Apply hardcoded attack style immediately if enabled
+            if (hardAttackStyle != HardAttackStyle.NONE) {
+                AttackStyle desired = AttackStyle.valueOf(hardAttackStyle.name());
+                WidgetInfo widget = getWidgetForStyle(desired);
+                Microbot.log("Hard Attack Style: " + desired.getName());
+                Microbot.log("Current Style: " + attackStyle.getName());
+                if (widget != null && attackStyle != desired) {
+                    changeAttackStyle(config, widget);
+                }
+                return;
+            }
+
             // Proceed if it's time to change the attack style or if we've just leveled up
             if (!isTimeForAttackStyleChange() && !leveledUp) {
                 return;
@@ -99,17 +117,6 @@ public class AttackStyleScript extends Script {
 
             // Update the last attack style change time
             lastAttackStyleChangeTime = System.currentTimeMillis();
-
-            // Update attack style information
-            updateAttackStyleInfo();
-            if(hardAttackStyle != HardAttackStyle.NONE) {
-                AttackStyle desired = AttackStyle.valueOf(hardAttackStyle.name());
-                WidgetInfo widget = getWidgetForStyle(desired);
-                if(widget != null && attackStyle != desired) {
-                    changeAttackStyle(config, widget);
-                }
-                return;
-            }
 
             if (attackStyle == AttackStyle.LONGRANGE || attackStyle == AttackStyle.RANGING) {
                 WeaponAttackType weaponAttackType = WeaponAttackType.getById(equippedWeaponTypeVarbit);
