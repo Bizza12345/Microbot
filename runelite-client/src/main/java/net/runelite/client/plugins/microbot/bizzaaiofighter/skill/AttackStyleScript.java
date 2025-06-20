@@ -220,9 +220,26 @@ public class AttackStyleScript extends Script {
 
         AttackStyle[] styles = new AttackStyle[weaponStyleStructs.length];
         int i = 0;
-        for (int style : weaponStyleStructs) {
-            String attackStyleName = Microbot.getStructComposition(style).getStringValue(ParamID.ATTACK_STYLE_NAME);
-            AttackStyle attackStyle = AttackStyle.valueOf(attackStyleName.toUpperCase());
+        for (int structId : weaponStyleStructs) {
+            String attackStyleName = null;
+            StructComposition struct = Microbot.getStructComposition(structId);
+            if (struct != null) {
+                attackStyleName = struct.getStringValue(ParamID.ATTACK_STYLE_NAME);
+            }
+
+            if (attackStyleName == null) {
+                log.warn("Unknown attack style struct: {}", structId);
+                styles[i++] = AttackStyle.OTHER;
+                continue;
+            }
+
+            AttackStyle attackStyle;
+            try {
+                attackStyle = AttackStyle.valueOf(attackStyleName.toUpperCase());
+            } catch (IllegalArgumentException e) {
+                log.warn("Unrecognized attack style name: {}", attackStyleName);
+                attackStyle = AttackStyle.OTHER;
+            }
 
             if (attackStyle == AttackStyle.OTHER)
             {
