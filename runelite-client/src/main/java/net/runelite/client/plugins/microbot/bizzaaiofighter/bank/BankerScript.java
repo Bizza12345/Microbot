@@ -9,8 +9,10 @@ import net.runelite.client.plugins.microbot.bizzaaiofighter.BizzaAIOFighterConfi
 import net.runelite.client.plugins.microbot.bizzaaiofighter.BizzaAIOFighterPlugin;
 import net.runelite.client.plugins.microbot.bizzaaiofighter.constants.Constants;
 import net.runelite.client.plugins.microbot.bizzaaiofighter.enums.State;
+import net.runelite.client.plugins.microbot.bizzaaiofighter.enums.DepositMethod;
 import net.runelite.client.plugins.microbot.util.Rs2InventorySetup;
 import net.runelite.client.plugins.microbot.util.bank.Rs2Bank;
+import net.runelite.client.plugins.microbot.util.inventory.Rs2ItemModel;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
 import net.runelite.client.plugins.microbot.util.misc.Rs2Food;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
@@ -135,8 +137,30 @@ public class BankerScript extends Script {
                 .filter(item -> item.isEnabled(config))
                 .flatMap(item -> item.getIds().stream())
                 .collect(Collectors.toList());
-        Rs2Bank.depositAllExcept(ids.toArray(new Integer[0]));
+
+        int attempts = 0;
+        while (attempts < 3 && hasDepositableItems(ids)) {
+            Rs2Bank.depositAllExcept(ids.toArray(new Integer[0]));
+            Rs2Inventory.waitForInventoryChanges(1200);
+            attempts++;
+        }
+
         return Rs2Bank.isOpen();
+    }
+
+    private void depositAllWithRetry() {
+        int attempts = 0;
+        while (attempts < 3 && !Rs2Inventory.isEmpty()) {
+            Rs2Bank.depositAll();
+            Rs2Inventory.waitForInventoryChanges(1200);
+            attempts++;
+        }
+    }
+
+    private boolean hasDepositableItems(List<Integer> keepIds) {
+        return Rs2Inventory.items().stream()
+                .map(Rs2ItemModel::getId)
+                .anyMatch(id -> !keepIds.contains(id));
     }
 
     public boolean isUpkeepItemDepleted(BizzaAIOFighterConfig config) {
@@ -153,7 +177,22 @@ public class BankerScript extends Script {
         BizzaAIOFighterPlugin.setState(State.BANKING);
         Rs2Prayer.disableAllPrayers();
         if (Rs2Bank.walkToBankAndUseBank()) {
-            depositAllExcept(config);
+            switch (config.depositMethod()) {
+                case DEPOSIT_ALL:
+                    depositAllWithRetry();
+                    break;
+                case RANDOM:
+                    if (new Random().nextBoolean()) {
+                        depositAllWithRetry();
+                    } else {
+                        depositAllExcept(config);
+                    }
+                    break;
+                case KEEP_UPKEEP:
+                default:
+                    depositAllExcept(config);
+                    break;
+            }
             withdrawUpkeepItems(config);
             Rs2Bank.closeBank();
         }
