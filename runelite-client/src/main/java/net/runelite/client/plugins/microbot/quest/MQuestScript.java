@@ -44,6 +44,10 @@ import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
+import net.runelite.client.plugins.microbot.questhelper.QuestHelper;
+import net.runelite.client.plugins.microbot.util.grandexchange.Rs2GrandExchange;
+import net.runelite.client.plugins.microbot.quest.QuestBank;
+
 public class MQuestScript extends Script {
     public static double version = 0.3;
 
@@ -63,6 +67,9 @@ public class MQuestScript extends Script {
 
     QuestStep dialogueStartedStep = null;
 
+    private QuestHelper lastQuest = null;
+    private boolean itemsBoughtForQuest = false;
+
 
 
     public boolean run(MQuestConfig config, MQuestPlugin mQuestPlugin) {
@@ -75,6 +82,33 @@ public class MQuestScript extends Script {
                 if (!Microbot.isLoggedIn()) return;
                 if (!super.run()) return;
                 if (getQuestHelperPlugin().getSelectedQuest() == null) return;
+
+                itemRequirements = new ArrayList<>();
+                itemsMissing = new ArrayList<>();
+                grandExchangeItems = new ArrayList<>();
+
+                QuestHelper currentQuest = getQuestHelperPlugin().getSelectedQuest();
+                var reqs = currentQuest.getItemRequirements();
+                if (reqs != null) {
+                    itemRequirements.addAll(reqs);
+                    itemsMissing = reqs.stream()
+                            .filter(r -> !Rs2Inventory.hasItemAmount(r.getId(), r.getQuantity()))
+                            .collect(Collectors.toList());
+                    grandExchangeItems = itemsMissing.stream()
+                            .filter(r -> getQuestHelperPlugin().getItemManager().getItemComposition(r.getId()).isTradeable())
+                            .collect(Collectors.toList());
+                }
+
+                if (config.autoBuyItems() && currentQuest != null) {
+                    if (currentQuest != lastQuest) {
+                        lastQuest = currentQuest;
+                        itemsBoughtForQuest = false;
+                    }
+                    if (!itemsBoughtForQuest) {
+                        buyRequiredItemsForQuest(currentQuest);
+                        itemsBoughtForQuest = true;
+                    }
+                }
 
                 if (Rs2Player.isAnimating())
                     Rs2Player.waitForAnimation();
@@ -574,6 +608,36 @@ public class MQuestScript extends Script {
         }
 
         return Rs2Widget.clickWidget(widget.getId());
+    }
+
+    private void buyRequiredItemsForQuest(QuestHelper quest) {
+        List<ItemRequirement> requirements = quest.getItemRequirements();
+        if (requirements == null) {
+            return;
+        }
+
+        for (ItemRequirement req : requirements) {
+            int id = req.getId();
+            if (id <= 0) {
+                continue;
+            }
+
+            if (!getQuestHelperPlugin().getItemManager().getItemComposition(id).isTradeable()) {
+                continue;
+            }
+
+            int owned = Rs2Inventory.count(id) + Rs2Bank.count(id);
+            if (owned >= req.getQuantity()) {
+                continue;
+            }
+
+            int toBuy = req.getQuantity() - owned;
+
+            QuestBank.ensureCoinsAvailable(1);
+
+            Rs2GrandExchange.buyItemAbove5Percent(req.getName(), toBuy);
+            Rs2GrandExchange.collectToInventory();
+        }
     }
 
     protected QuestHelperPlugin getQuestHelperPlugin() {
