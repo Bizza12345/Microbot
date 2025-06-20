@@ -7,6 +7,7 @@ import net.runelite.client.plugins.microbot.bizzaaiofighter.enums.PlayStyle;
 import net.runelite.client.plugins.microbot.bizzaaiofighter.enums.PrayerStyle;
 import net.runelite.client.plugins.microbot.bizzaaiofighter.enums.HardAttackStyle;
 import net.runelite.client.plugins.microbot.bizzaaiofighter.enums.State;
+import net.runelite.client.plugins.microbot.bizzaaiofighter.enums.DepositMethod;
 import net.runelite.client.plugins.microbot.inventorysetups.InventorySetup;
 import net.runelite.client.plugins.microbot.util.magic.Rs2CombatSpells;
 import net.runelite.client.plugins.microbot.util.slayer.enums.SlayerMaster;
@@ -857,6 +858,17 @@ public interface BizzaAIOFighterConfig extends Config {
     )
     default boolean ignoreTeleport() {
         return true;
+    }
+
+    @ConfigItem(
+            keyName = "depositMethod",
+            name = "Bank deposit mode",
+            description = "How items are deposited when banking",
+            position = 10,
+            section = banking
+    )
+    default DepositMethod depositMethod() {
+        return DepositMethod.KEEP_UPKEEP;
     }
 
     // Safety section

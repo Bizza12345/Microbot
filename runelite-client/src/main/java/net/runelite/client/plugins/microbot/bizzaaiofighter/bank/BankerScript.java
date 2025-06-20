@@ -9,6 +9,7 @@ import net.runelite.client.plugins.microbot.bizzaaiofighter.BizzaAIOFighterConfi
 import net.runelite.client.plugins.microbot.bizzaaiofighter.BizzaAIOFighterPlugin;
 import net.runelite.client.plugins.microbot.bizzaaiofighter.constants.Constants;
 import net.runelite.client.plugins.microbot.bizzaaiofighter.enums.State;
+import net.runelite.client.plugins.microbot.bizzaaiofighter.enums.DepositMethod;
 import net.runelite.client.plugins.microbot.util.Rs2InventorySetup;
 import net.runelite.client.plugins.microbot.util.bank.Rs2Bank;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
@@ -153,7 +154,22 @@ public class BankerScript extends Script {
         BizzaAIOFighterPlugin.setState(State.BANKING);
         Rs2Prayer.disableAllPrayers();
         if (Rs2Bank.walkToBankAndUseBank()) {
-            depositAllExcept(config);
+            switch (config.depositMethod()) {
+                case DEPOSIT_ALL:
+                    Rs2Bank.depositAll();
+                    break;
+                case RANDOM:
+                    if (new Random().nextBoolean()) {
+                        Rs2Bank.depositAll();
+                    } else {
+                        depositAllExcept(config);
+                    }
+                    break;
+                case KEEP_UPKEEP:
+                default:
+                    depositAllExcept(config);
+                    break;
+            }
             withdrawUpkeepItems(config);
             Rs2Bank.closeBank();
         }
