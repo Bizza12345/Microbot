@@ -26,7 +26,7 @@ public class BizzaAIOFighterInfoOverlay extends OverlayPanel {
         try {
             panelComponent.setPreferredSize(new Dimension(250, 400));
             panelComponent.getChildren().add(TitleComponent.builder()
-                    .text("\uD83E\uDD86 AIO Fighter \uD83E\uDD86")
+                    .text("\uD83E\uDD86 Bizza AIO Fighter \uD83E\uDD86")
                     .color(Color.ORANGE)
                     .build());
 
