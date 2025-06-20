@@ -56,6 +56,7 @@ enum ItemToKeep {
 
 @Slf4j
 public class BankerScript extends Script {
+    private static final Random RNG = new Random();
     BizzaAIOFighterConfig config;
 
 
@@ -138,12 +139,17 @@ public class BankerScript extends Script {
                 .flatMap(item -> item.getIds().stream())
                 .collect(Collectors.toList());
 
+        log.info("Depositing all except upkeep items: {}", ids);
+
         int attempts = 0;
         while (attempts < 3 && hasDepositableItems(ids)) {
+            log.info("Deposit attempt {} for KEEP_UPKEEP", attempts + 1);
             Rs2Bank.depositAllExcept(ids.toArray(new Integer[0]));
             Rs2Inventory.waitForInventoryChanges(1200);
             attempts++;
         }
+
+        log.info("Finished depositAllExcept with {} attempts", attempts);
 
         return Rs2Bank.isOpen();
     }
@@ -151,6 +157,7 @@ public class BankerScript extends Script {
     private void depositAllWithRetry() {
         int attempts = 0;
         while (attempts < 3 && !Rs2Inventory.isEmpty()) {
+            log.info("Deposit all attempt {}", attempts + 1);
             Rs2Bank.depositAll();
             Rs2Inventory.waitForInventoryChanges(1200);
             attempts++;
@@ -177,12 +184,22 @@ public class BankerScript extends Script {
         BizzaAIOFighterPlugin.setState(State.BANKING);
         Rs2Prayer.disableAllPrayers();
         if (Rs2Bank.walkToBankAndUseBank()) {
+            log.info(
+                "Using deposit method: {} (empty slots: {} upkeep depleted: {})",
+                config.depositMethod(),
+                Rs2Inventory.getEmptySlots(),
+                isUpkeepItemDepleted(config)
+            );
             switch (config.depositMethod()) {
                 case DEPOSIT_ALL:
                     depositAllWithRetry();
                     break;
                 case RANDOM:
-                    if (new Random().nextBoolean()) {
+                    DepositMethod chosen = RNG.nextBoolean()
+                        ? DepositMethod.DEPOSIT_ALL
+                        : DepositMethod.KEEP_UPKEEP;
+                    log.info("Randomly selected deposit option: {}", chosen);
+                    if (chosen == DepositMethod.DEPOSIT_ALL) {
                         depositAllWithRetry();
                     } else {
                         depositAllExcept(config);
@@ -193,10 +210,18 @@ public class BankerScript extends Script {
                     depositAllExcept(config);
                     break;
             }
+            log.info(
+                "Finished deposits using {}. Empty slots now: {}",
+                config.depositMethod(),
+                Rs2Inventory.getEmptySlots()
+            );
             withdrawUpkeepItems(config);
+            log.info("After withdrawing upkeep items, empty slots: {}", Rs2Inventory.getEmptySlots());
             Rs2Bank.closeBank();
         }
-        return !needsBanking();
+        boolean done = !needsBanking();
+        log.info("handleBanking completed, needsBanking={}", !done);
+        return done;
     }
 
 
