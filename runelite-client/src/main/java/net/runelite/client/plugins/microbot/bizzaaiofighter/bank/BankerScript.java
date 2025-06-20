@@ -184,12 +184,14 @@ public class BankerScript extends Script {
         BizzaAIOFighterPlugin.setState(State.BANKING);
         Rs2Prayer.disableAllPrayers();
         if (Rs2Bank.walkToBankAndUseBank()) {
+
             log.info(
                 "Using deposit method: {} (empty slots: {} upkeep depleted: {})",
                 config.depositMethod(),
                 Rs2Inventory.getEmptySlots(),
                 isUpkeepItemDepleted(config)
             );
+
             switch (config.depositMethod()) {
                 case DEPOSIT_ALL:
                     depositAllWithRetry();
@@ -210,6 +212,7 @@ public class BankerScript extends Script {
                     depositAllExcept(config);
                     break;
             }
+
             log.info(
                 "Finished deposits using {}. Empty slots now: {}",
                 config.depositMethod(),
