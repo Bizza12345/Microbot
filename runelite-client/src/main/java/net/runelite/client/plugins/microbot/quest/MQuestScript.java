@@ -18,6 +18,7 @@ import net.runelite.client.plugins.microbot.questhelper.steps.*;
 import net.runelite.client.plugins.microbot.questhelper.steps.widget.WidgetHighlight;
 import net.runelite.client.plugins.microbot.shortestpath.ShortestPathPlugin;
 import net.runelite.client.plugins.microbot.util.bank.Rs2Bank;
+import net.runelite.client.plugins.microbot.util.grandexchange.Rs2GrandExchange;
 import net.runelite.client.plugins.microbot.util.camera.Rs2Camera;
 import net.runelite.client.plugins.microbot.util.combat.Rs2Combat;
 import net.runelite.client.plugins.microbot.util.dialogues.Rs2Dialogue;
@@ -35,6 +36,7 @@ import net.runelite.client.plugins.microbot.util.shop.Rs2Shop;
 import net.runelite.client.plugins.microbot.util.tile.Rs2Tile;
 import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
 import net.runelite.client.plugins.microbot.util.widget.Rs2Widget;
+import net.runelite.api.ItemComposition;
 
 import java.awt.*;
 import java.awt.event.KeyEvent;
@@ -80,6 +82,9 @@ public class MQuestScript extends Script {
                     Rs2Player.waitForAnimation();
 
                 QuestStep questStep = getQuestHelperPlugin().getSelectedQuest().getCurrentStep().getActiveStep();
+
+                if (!processItemRequirements())
+                    return;
 
                 if (Rs2Dialogue.isInDialogue() && dialogueStartedStep == null)
                     dialogueStartedStep = questStep;
@@ -260,6 +265,107 @@ public class MQuestScript extends Script {
         itemsMissing = new ArrayList<>();
         itemRequirements = new ArrayList<>();
         grandExchangeItems = new ArrayList<>();
+    }
+
+    private boolean processItemRequirements()
+    {
+        var questHelper = getQuestHelperPlugin().getSelectedQuest();
+        if (questHelper == null)
+        {
+            return true;
+        }
+
+        if (itemRequirements.isEmpty())
+        {
+            var map = getQuestHelperPlugin().getItemRequirements();
+            if (map != null)
+            {
+                var reqs = map.get(questHelper.getQuest());
+                if (reqs != null)
+                {
+                    itemRequirements.addAll(reqs);
+                    Microbot.log("Loaded " + reqs.size() + " quest item requirements");
+                }
+            }
+        }
+
+        if (itemRequirements.isEmpty())
+        {
+            return true;
+        }
+
+        itemsMissing.clear();
+        for (ItemRequirement req : itemRequirements)
+        {
+            Integer[] ids = req.getAllIds().toArray(new Integer[0]);
+            if (!Rs2Inventory.contains(ids))
+            {
+                itemsMissing.add(req);
+            }
+        }
+
+        if (itemsMissing.isEmpty())
+        {
+            return true;
+        }
+
+        for (ItemRequirement req : new ArrayList<>(itemsMissing))
+        {
+            int[] ids = req.getAllIds().stream().mapToInt(Integer::intValue).toArray();
+            if (Rs2Bank.hasItem(ids))
+            {
+                if (!Rs2Bank.isOpen())
+                {
+                    Rs2Bank.openBank();
+                    return false;
+                }
+
+                Rs2Bank.withdrawItem(true, ids[0]);
+                Microbot.log("Withdrawing required item " + getItemName(ids[0]));
+                itemsMissing.remove(req);
+            }
+        }
+
+        if (!itemsMissing.isEmpty())
+        {
+            grandExchangeItems.clear();
+            grandExchangeItems.addAll(itemsMissing);
+            buyMissingItems();
+            return false;
+        }
+
+        return true;
+    }
+
+    private void buyMissingItems()
+    {
+        if (grandExchangeItems.isEmpty())
+        {
+            return;
+        }
+
+        if (!Rs2GrandExchange.isOpen())
+        {
+            Rs2GrandExchange.openExchange();
+            return;
+        }
+
+        for (ItemRequirement req : grandExchangeItems)
+        {
+            String name = getItemName(req.getId());
+            Microbot.log("Attempting to buy " + name);
+            Rs2GrandExchange.buyItemAbove5Percent(name, req.getQuantity());
+        }
+
+        Rs2GrandExchange.collectToBank();
+        Microbot.log("Finished buying missing quest items");
+        grandExchangeItems.clear();
+    }
+
+    private String getItemName(int id)
+    {
+        ItemComposition item = Microbot.getClientThread().runOnClientThreadOptional(() -> Microbot.getItemManager().getItemComposition(id)).orElse(null);
+        return item != null ? item.getName() : String.valueOf(id);
     }
 
     public boolean applyStep(QuestStep step) {
