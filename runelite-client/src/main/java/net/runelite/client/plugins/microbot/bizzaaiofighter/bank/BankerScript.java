@@ -140,15 +140,7 @@ public class BankerScript extends Script {
 
         log.info("Depositing all except upkeep items: {}", ids);
 
-        int attempts = 0;
-        while (attempts < 3 && hasDepositableItems(ids)) {
-            log.info("Deposit attempt {} for KEEP_UPKEEP", attempts + 1);
-            Rs2Bank.depositAllExcept(ids.toArray(new Integer[0]));
-            Rs2Inventory.waitForInventoryChanges(1200);
-            attempts++;
-        }
-
-        log.info("Finished depositAllExcept with {} attempts", attempts);
+        Rs2Bank.depositAllExcept(ids.toArray(new Integer[0]));
 
         return Rs2Bank.isOpen();
     }
@@ -163,11 +155,6 @@ public class BankerScript extends Script {
         }
     }
 
-    private boolean hasDepositableItems(List<Integer> keepIds) {
-        return Rs2Inventory.items().stream()
-                .map(Rs2ItemModel::getId)
-                .anyMatch(id -> !keepIds.contains(id));
-    }
 
     public boolean isUpkeepItemDepleted(BizzaAIOFighterConfig config) {
         return Arrays.stream(ItemToKeep.values())
@@ -183,24 +170,28 @@ public class BankerScript extends Script {
         BizzaAIOFighterPlugin.setState(State.BANKING);
         Rs2Prayer.disableAllPrayers();
         if (Rs2Bank.walkToBankAndUseBank()) {
-            log.info("Using deposit method: {}", config.depositMethod());
-            switch (config.depositMethod()) {
+            DepositMethod methodUsed = config.depositMethod();
+            log.info("Using deposit method: {}", methodUsed);
+            switch (methodUsed) {
                 case DEPOSIT_ALL:
                     depositAllWithRetry();
                     break;
                 case RANDOM:
                     if (new Random().nextBoolean()) {
                         depositAllWithRetry();
+                        methodUsed = DepositMethod.DEPOSIT_ALL;
                     } else {
                         depositAllExcept(config);
+                        methodUsed = DepositMethod.KEEP_UPKEEP;
                     }
                     break;
                 case KEEP_UPKEEP:
                 default:
                     depositAllExcept(config);
+                    methodUsed = DepositMethod.KEEP_UPKEEP;
                     break;
             }
-            log.info("Finished deposits using {}", config.depositMethod());
+            log.info("Finished deposits using {}", methodUsed);
             withdrawUpkeepItems(config);
             Rs2Bank.closeBank();
         }
