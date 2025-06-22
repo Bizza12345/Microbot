@@ -306,7 +306,15 @@ public class MQuestScript extends Script {
 
         if (itemsMissing.isEmpty())
         {
+            Microbot.log("All quest items accounted for");
             return true;
+        }
+        else
+        {
+            String missingNames = itemsMissing.stream()
+                    .map(r -> getItemName(r.getId()))
+                    .collect(Collectors.joining(", "));
+            Microbot.log("Missing items: " + missingNames);
         }
 
         for (ItemRequirement req : new ArrayList<>(itemsMissing))
@@ -357,7 +365,7 @@ public class MQuestScript extends Script {
             Rs2GrandExchange.buyItemAbove5Percent(name, req.getQuantity());
         }
 
-        Rs2GrandExchange.collectToBank();
+        Rs2GrandExchange.collectToInventory();
         Microbot.log("Finished buying missing quest items");
         grandExchangeItems.clear();
     }
