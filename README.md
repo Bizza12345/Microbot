@@ -4,6 +4,8 @@
 
 # Microbot
 Microbot is an opensource oldschool runescape client based on runelite. It uses a plugin system to enable scripting. Here is a youtube channel showing off some of the scripts
+Additional guides and API details are available in the [docs](docs/README.md) folder.
+
 
 ## Youtube
 
@@ -62,6 +64,17 @@ After you've done setting it up follow these two steps:
 Make sure to follow this guide if it's your first time running the project
 
 [https://github.com/runelite/runelite/wiki/Building-with-IntelliJ-IDEA](https://github.com/chsami/microbot/wiki/Building-with-IntelliJ-IDEA)
+
+### Building
+To compile the project locally you will need JDK 11 and Maven installed. Run:
+```bash
+mvn -DskipTests package
+```
+The build downloads dependencies from Maven Central.
+### Documentation
+Additional guides are available in the [docs](docs/README.md) folder.
+
+
 
 ## Microbot ChatGPT Chatbot
 
