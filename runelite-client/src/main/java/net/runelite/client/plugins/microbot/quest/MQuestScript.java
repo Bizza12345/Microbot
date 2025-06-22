@@ -297,8 +297,7 @@ public class MQuestScript extends Script {
         itemsMissing.clear();
         for (ItemRequirement req : itemRequirements)
         {
-            Integer[] ids = req.getAllIds().toArray(new Integer[0]);
-            if (!Rs2Inventory.contains(ids))
+            if (!req.check(Microbot.getClient()))
             {
                 itemsMissing.add(req);
             }
@@ -306,7 +305,15 @@ public class MQuestScript extends Script {
 
         if (itemsMissing.isEmpty())
         {
+            Microbot.log("All quest items accounted for");
             return true;
+        }
+        else
+        {
+            String missingNames = itemsMissing.stream()
+                    .map(r -> getItemName(r.getId()))
+                    .collect(Collectors.joining(", "));
+            Microbot.log("Missing items: " + missingNames);
         }
 
         for (ItemRequirement req : new ArrayList<>(itemsMissing))
@@ -320,8 +327,13 @@ public class MQuestScript extends Script {
                     return false;
                 }
 
-                Rs2Bank.withdrawItem(true, ids[0]);
-                Microbot.log("Withdrawing required item " + getItemName(ids[0]));
+                Rs2Bank.setWithdrawAsItem();
+                for (int id : ids)
+                {
+                    Rs2Bank.depositAll(id);
+                }
+                Rs2Bank.withdrawX(true, ids[0], req.getQuantity());
+                Microbot.log("Withdrawing required item " + getItemName(ids[0]) + " x" + req.getQuantity());
                 itemsMissing.remove(req);
             }
         }
@@ -357,7 +369,7 @@ public class MQuestScript extends Script {
             Rs2GrandExchange.buyItemAbove5Percent(name, req.getQuantity());
         }
 
-        Rs2GrandExchange.collectToBank();
+        Rs2GrandExchange.collectToInventory();
         Microbot.log("Finished buying missing quest items");
         grandExchangeItems.clear();
     }
