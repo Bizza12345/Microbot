@@ -345,7 +345,27 @@ public class MQuestScript extends Script {
             buyMissingItems();
             return false;
         }
+        for (ItemRequirement req : itemRequirements) {
+            String name = req.getName();
+            int id = req.getId(); // this should be unnoted!
+            int qty = req.getQuantity();
 
+            int unnotedCount = Rs2Inventory.count(id); // counts only unnoted
+
+            boolean hasNoted = Rs2Inventory.hasNotedItem(name, true);
+
+            if (hasNoted && unnotedCount < qty) {
+                if (!Rs2Bank.isOpen()) {
+                    Rs2Bank.openBank();
+                    return false;
+                }
+                Rs2Bank.depositAll(id); // dumps both noted and unnoted, since same ID (noted is +1 in itemdb)
+                Rs2Bank.setWithdrawAsItem();
+                Rs2Bank.withdrawX(true, id, qty);
+                Microbot.log("Unnoting " + name + " x" + qty);
+                return false;
+            }
+        }
         return true;
     }
 
