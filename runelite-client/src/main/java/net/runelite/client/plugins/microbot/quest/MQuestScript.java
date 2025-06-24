@@ -267,8 +267,32 @@ public class MQuestScript extends Script {
         grandExchangeItems = new ArrayList<>();
     }
 
+    private boolean isBuyableRequirement(ItemRequirement req) {
+        int id = req.getId();
+        String geName = getItemName(id);
+        String rawName = req.getName();
+        // ID check
+        if (id <= 0) return false;
+        // Name "junk" check
+        if (geName == null || geName.equalsIgnoreCase("null") || geName.equals(String.valueOf(-1))) return false;
+        if (rawName == null) return false;
+        String nameLower = rawName.toLowerCase();
+        if (nameLower.contains("combat gear") || nameLower.contains("food") ||
+                nameLower.contains("weapon") || nameLower.contains("armor") || nameLower.contains("armour")) {
+            return false;
+        }
+        // Tradeable check
+        ItemComposition itemComp = Microbot.getClientThread()
+                .runOnClientThreadOptional(() -> Microbot.getItemManager().getItemComposition(id)).orElse(null);
+        if (itemComp == null) return false;
+        if (!itemComp.isTradeable()) return false;
+        // If it passed all checks, it’s a buyable item.
+        return true;
+    }
+
+
     private boolean processItemRequirements()
-    {
+    {Microbot.status = "Processing Item Rquirements";
         var questHelper = getQuestHelperPlugin().getSelectedQuest();
         if (questHelper == null)
         {
@@ -342,18 +366,25 @@ public class MQuestScript extends Script {
         if (!itemsMissing.isEmpty())
         {
             grandExchangeItems.clear();
-            grandExchangeItems.addAll(itemsMissing);
+            for (ItemRequirement req : itemsMissing) {
+                if (!isBuyableRequirement(req)) {
+                    Microbot.log("Skipping GE buy for missing requirement: Name=" + req.getName() + ", ID=" + req.getId() + ", GE Name=" + getItemName(req.getId()));
+                    continue;
+                }
+                grandExchangeItems.add(req);
+            }
+
             for (ItemRequirement req : itemsMissing) {
                 Microbot.log("BEFORE BUT MISSING [DEBUG] Missing item: Name=" + req.getName() +
                         ", ID=" + req.getId() +
                         ", AllIDs=" + req.getAllIds() +
                         ", GE Name=" + getItemName(req.getId()));
             }
-            buyMissingItems();
-            return true;
+            return buyMissingItems(); //
         }
+
         for (ItemRequirement req : itemRequirements) {
-            String name = req.getName();
+            String name = getItemName(req.getId());
             int id = req.getId(); // this should be unnoted!
             int qty = req.getQuantity();
 
@@ -362,6 +393,7 @@ public class MQuestScript extends Script {
             boolean hasNoted = Rs2Inventory.hasNotedItem(name, true);
 
             if (hasNoted && unnotedCount < qty) {
+                Microbot.status = "Checking for noted items";
                 if (!Rs2Bank.isOpen()) {
                     Rs2Bank.openBank();
                     return false;
@@ -370,6 +402,7 @@ public class MQuestScript extends Script {
                 Rs2Bank.setWithdrawAsItem();
                 Rs2Bank.withdrawX(true, id, qty);
                 Microbot.log("Unnoting " + name + " x" + qty);
+                Microbot.status = "Un-noting items";
                 return false;
             }
         }
@@ -378,6 +411,7 @@ public class MQuestScript extends Script {
     }
     private boolean isGEReadyForBuy() {
         // Defensive check: If the search text widget is present and not a price, don't buy.
+        Microbot.status = "Checking if GE is ready to use!";
         try {
             // You'll need to adjust the widget group/child ID if your GE layout is nonstandard!
             Widget searchWidget = Microbot.getClient().getWidget(465, 24); // 465=GE buy screen group, 24=search text
@@ -390,20 +424,20 @@ public class MQuestScript extends Script {
         } catch (Exception ignored) { }
         return true;
     }
-    private void buyMissingItems()
-    {
+    private boolean buyMissingItems()
+    {Microbot.status = "Buying Items";
         if (grandExchangeItems.isEmpty()) {
-            return;
+            return true;
         }
 
         if (!Rs2GrandExchange.isOpen()) {
             Rs2GrandExchange.openExchange();
-            return;
+            return false;
         }
 
         // Defensive: Make a copy so we can remove failed items without ConcurrentModification
         for (ItemRequirement req : new ArrayList<>(grandExchangeItems)) {
-            String name = req.getName();
+            String name =getItemName(req.getId());
             Microbot.log("Attempting to buy " + name);
 
             // Defensive: Only proceed if GE is in a usable state!
@@ -439,6 +473,8 @@ public class MQuestScript extends Script {
         Rs2GrandExchange.collectToInventory();
         Microbot.log("Finished buying missing quest items");
         grandExchangeItems.clear();
+        Microbot.status = "Finished buying. Resuming Questing";
+        return true;
     }
 
     private String getItemName(int id)
