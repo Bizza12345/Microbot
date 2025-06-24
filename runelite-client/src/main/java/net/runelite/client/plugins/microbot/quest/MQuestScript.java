@@ -297,7 +297,8 @@ public class MQuestScript extends Script {
         itemsMissing.clear();
         for (ItemRequirement req : itemRequirements)
         {
-            if (!req.check(Microbot.getClient()))
+            Integer[] ids = req.getAllIds().toArray(new Integer[0]);
+            if (!Rs2Inventory.contains(ids))
             {
                 itemsMissing.add(req);
             }
@@ -342,8 +343,14 @@ public class MQuestScript extends Script {
         {
             grandExchangeItems.clear();
             grandExchangeItems.addAll(itemsMissing);
+            for (ItemRequirement req : itemsMissing) {
+                Microbot.log("BEFORE BUT MISSING [DEBUG] Missing item: Name=" + req.getName() +
+                        ", ID=" + req.getId() +
+                        ", AllIDs=" + req.getAllIds() +
+                        ", GE Name=" + getItemName(req.getId()));
+            }
             buyMissingItems();
-            return false;
+            return true;
         }
         for (ItemRequirement req : itemRequirements) {
             String name = req.getName();
@@ -366,27 +373,67 @@ public class MQuestScript extends Script {
                 return false;
             }
         }
+
         return true;
     }
-
+    private boolean isGEReadyForBuy() {
+        // Defensive check: If the search text widget is present and not a price, don't buy.
+        try {
+            // You'll need to adjust the widget group/child ID if your GE layout is nonstandard!
+            Widget searchWidget = Microbot.getClient().getWidget(465, 24); // 465=GE buy screen group, 24=search text
+            if (searchWidget != null && searchWidget.getText() != null) {
+                String text = searchWidget.getText();
+                if (text.contains("Click the icon") || text.matches(".*[a-zA-Z]+.*")) {
+                    return false; // Contains letters, not a price
+                }
+            }
+        } catch (Exception ignored) { }
+        return true;
+    }
     private void buyMissingItems()
     {
-        if (grandExchangeItems.isEmpty())
-        {
+        if (grandExchangeItems.isEmpty()) {
             return;
         }
 
-        if (!Rs2GrandExchange.isOpen())
-        {
+        if (!Rs2GrandExchange.isOpen()) {
             Rs2GrandExchange.openExchange();
             return;
         }
 
-        for (ItemRequirement req : grandExchangeItems)
-        {
-            String name = getItemName(req.getId());
+        // Defensive: Make a copy so we can remove failed items without ConcurrentModification
+        for (ItemRequirement req : new ArrayList<>(grandExchangeItems)) {
+            String name = req.getName();
             Microbot.log("Attempting to buy " + name);
-            Rs2GrandExchange.buyItemAbove5Percent(name, req.getQuantity());
+
+            // Defensive: Only proceed if GE is in a usable state!
+            if (!isGEReadyForBuy()) {
+                Microbot.log("GE not in a valid state to buy " + name + ". Skipping.");
+                // Optionally, you could try to reopen the GE here, but let's keep it simple.
+                grandExchangeItems.remove(req);
+                continue;
+            }
+
+            try {
+                Rs2GrandExchange.buyItemAbove5Percent(name, req.getQuantity());
+            } catch (Exception ex) {
+                Microbot.log("Error buying item " + name + ": " + ex.getMessage());
+                ex.printStackTrace(System.out);
+                // Remove item so we don't loop on it
+                grandExchangeItems.remove(req);
+                continue;
+            }
+
+            // Check: Did we get the item? (Unnoted version is default)
+            boolean hasItem = Rs2Inventory.count(req.getId()) >= req.getQuantity();
+            if (!hasItem) {
+                Microbot.log("Did not obtain " + name + " after buy attempt. Skipping.");
+                // Remove to avoid endless loop
+                grandExchangeItems.remove(req);
+            } else {
+                Microbot.log("Successfully bought " + name);
+                grandExchangeItems.remove(req); // Should always remove!
+            }
         }
 
         Rs2GrandExchange.collectToInventory();
@@ -723,3 +770,4 @@ public class MQuestScript extends Script {
             unreachableTarget = true;
     }
 }
+
