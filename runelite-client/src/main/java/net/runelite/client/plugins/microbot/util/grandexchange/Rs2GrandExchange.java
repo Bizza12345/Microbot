@@ -714,7 +714,9 @@ public class Rs2GrandExchange {
     }
 
     public static int getItemPrice() {
-        return Integer.parseInt(Rs2Widget.getWidget(465, 27).getText().replace(" coins", ""));
+        String text = Rs2Widget.getWidget(465, 27).getText();
+        int value = NumberExtractor.extractNumber(text);
+        return Math.max(value, 0);
     }
 
     public static Widget getSlot(GrandExchangeSlots slot) {
