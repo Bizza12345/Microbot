@@ -56,6 +56,13 @@ public class MQuestScript extends Script {
     public static List<ItemRequirement> itemsMissing = new ArrayList<>();
     public static List<ItemRequirement> grandExchangeItems = new ArrayList<>();
 
+    /**
+     * Once all required items are obtained and withdrawn this flag is set to
+     * avoid repeatedly re-checking requirements each game tick. It will be
+     * reset when the script shuts down or is restarted.
+     */
+    private static boolean requirementsChecked = false;
+
     boolean unreachableTarget = false;
     int unreachableTargetCheckDist = 1;
 
@@ -84,8 +91,11 @@ public class MQuestScript extends Script {
 
                 QuestStep questStep = getQuestHelperPlugin().getSelectedQuest().getCurrentStep().getActiveStep();
 
-                if (!processItemRequirements())
-                    return;
+                if (!requirementsChecked) {
+                    if (!processItemRequirements())
+                        return;
+                    requirementsChecked = true;
+                }
 
                 if (Rs2Dialogue.isInDialogue() && dialogueStartedStep == null)
                     dialogueStartedStep = questStep;
@@ -151,7 +161,7 @@ public class MQuestScript extends Script {
                 }
 
                 if (getQuestHelperPlugin().getSelectedQuest() != null && !Microbot.getClientThread().runOnClientThreadOptional(() ->
-                        getQuestHelperPlugin().getSelectedQuest().isCompleted()).orElse(null)) {
+                        getQuestHelperPlugin().getSelectedQuest().isCompleted()).orElse(false)) {
                     if (Rs2Widget.isWidgetVisible(ComponentID.DIALOG_OPTION_OPTIONS) && getQuestHelperPlugin().getSelectedQuest().getQuest().getId() != Quest.COOKS_ASSISTANT.getId() && !Rs2Bank.isOpen()) {
                         boolean hasOption = Rs2Dialogue.handleQuestOptionDialogueSelection();
                         //if there is no quest option in the dialogue, just click player location to remove
@@ -287,7 +297,22 @@ public class MQuestScript extends Script {
         }
     }
 
+    /**
+     * Count how many of the unnoted form of the requirement we have in the inventory.
+     * Noted items do not satisfy steps directly, so they are ignored here.
+     */
+    /**
+     * Count unnoted quantity of the requirement in the player inventory.
+     */
     private int countInventory(ItemRequirement req) {
+        return Rs2Inventory.itemQuantity(req.getId());
+    }
+
+    /**
+     * Count both noted and unnoted forms of the requirement in the inventory.
+     * Useful for determining whether we own enough items overall.
+     */
+    private int countInventoryAll(ItemRequirement req) {
         int count = 0;
         for (int id : getAllPossibleIds(req)) {
             count += Rs2Inventory.itemQuantity(id);
@@ -390,6 +415,8 @@ public class MQuestScript extends Script {
         itemsMissing = new ArrayList<>();
         itemRequirements = new ArrayList<>();
         grandExchangeItems = new ArrayList<>();
+        // allow requirement processing again on next run
+        requirementsChecked = false;
     }
     private boolean waitUntilItemBought(ItemRequirement req, int timeoutMs) {
         int waited = 0;
@@ -460,14 +487,15 @@ public class MQuestScript extends Script {
         boolean needsWithdraw = false;
         for (ItemRequirement req : itemRequirements)
         {
-            int invCount = countInventory(req);
+            int invUnnoted = countInventory(req);
+            int invTotal = countInventoryAll(req);
             int bankCount = countBank(req);
 
-            if (invCount < req.getQuantity())
+            if (invUnnoted < req.getQuantity())
             {
-                if (invCount + bankCount >= req.getQuantity())
+                if (invTotal + bankCount >= req.getQuantity())
                 {
-                    // We own enough but need to pull from the bank
+                    // We own enough overall but need to withdraw or unnote
                     needsWithdraw = true;
                 }
                 else
