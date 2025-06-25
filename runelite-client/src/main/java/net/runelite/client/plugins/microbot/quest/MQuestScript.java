@@ -281,7 +281,7 @@ public class MQuestScript extends Script {
         int waited = 0;
         int poll = 200;
         while (waited < timeoutMs) {
-            if (Rs2Inventory.count(itemId) >= target) return;
+            if (Rs2Inventory.itemQuantity(itemId) >= target) return;
             sleep(poll);
             waited += poll;
         }
@@ -290,7 +290,7 @@ public class MQuestScript extends Script {
     private int countInventory(ItemRequirement req) {
         int count = 0;
         for (int id : getAllPossibleIds(req)) {
-            count += Rs2Inventory.count(id);
+            count += Rs2Inventory.itemQuantity(id);
         }
         return count;
     }
@@ -316,7 +316,7 @@ public class MQuestScript extends Script {
             int unnotedId = req.getId();
             int notedId = getNotedId(unnotedId);
             boolean hasBank = Rs2Bank.count(unnotedId) > 0 || (notedId != -1 && Rs2Bank.count(notedId) > 0);
-            boolean hasNotedInv = notedId != -1 && Rs2Inventory.count(notedId) > 0;
+            boolean hasNotedInv = notedId != -1 && Rs2Inventory.itemQuantity(notedId) > 0;
 
             if (hasBank || hasNotedInv) {
                 if (!Rs2Bank.isOpen()) {
@@ -393,7 +393,7 @@ public class MQuestScript extends Script {
         int poll = 200;
         while (waited < timeoutMs) {
             for (int id : getAllPossibleIds(req)) {
-                if (Rs2Inventory.count(id) >= req.getQuantity()) return true;
+                if (Rs2Inventory.itemQuantity(id) >= req.getQuantity()) return true;
             }
             sleep(poll);
             waited += poll;
@@ -514,8 +514,8 @@ public class MQuestScript extends Script {
             for (ItemRequirement req : grandExchangeItems) {
                 int unnotedId = req.getId();
                 int notedId = getNotedId(unnotedId);
-                int haveNoted = (notedId != -1) ? Rs2Inventory.count(notedId) : 0;
-                int haveUnnoted = Rs2Inventory.count(unnotedId);
+                int haveNoted = (notedId != -1) ? Rs2Inventory.itemQuantity(notedId) : 0;
+                int haveUnnoted = Rs2Inventory.itemQuantity(unnotedId);
                 int totalHave = haveUnnoted + haveNoted;
                 int needed = req.getQuantity() - totalHave;
                 if (needed > 0 && haveNoted >= needed) {
