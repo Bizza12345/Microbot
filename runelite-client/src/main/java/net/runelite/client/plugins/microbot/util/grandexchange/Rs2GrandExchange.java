@@ -191,6 +191,10 @@ public class Rs2GrandExchange {
     private static void setQuantity(int quantity) {
         if (quantity != getOfferQuantity()) {
             Widget quantityButtonX = getQuantityButton_X();
+            if (quantityButtonX == null) {
+                Microbot.log("GE quantity button not found");
+                return;
+            }
             Microbot.getMouse().click(quantityButtonX.getBounds());
             sleepUntil(() -> Rs2Widget.getWidget(InterfaceID.Chatbox.MES_TEXT2) != null); //GE Enter Price/Quantity
             sleep(600, 1000);
@@ -203,6 +207,10 @@ public class Rs2GrandExchange {
     private static void setPrice(int price) {
         if (price != getOfferPrice()) {
             Widget pricePerItemButtonX = getPricePerItemButton_X();
+            if (pricePerItemButtonX == null) {
+                Microbot.log("GE price button not found");
+                return;
+            }
             Microbot.getMouse().click(pricePerItemButtonX.getBounds());
             sleepUntil(() -> Rs2Widget.getWidget(InterfaceID.Chatbox.MES_TEXT2) != null); //GE Enter Price
             sleep(600, 1000);

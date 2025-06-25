@@ -347,6 +347,9 @@ public class MQuestScript extends Script {
                 waitUntilInventoryCount(unnotedId, req.getQuantity(), 5_000);
                 return false;
             }
+            else {
+                Microbot.log("Requirement not found in bank: " + getItemName(unnotedId));
+            }
         }
         return true;
     }
@@ -430,6 +433,7 @@ public class MQuestScript extends Script {
     private boolean processItemRequirements()
     {
         Microbot.status = "Processing Item Requirements";
+        Microbot.log("Processing item requirements");
         var questHelper = getQuestHelperPlugin().getSelectedQuest();
         if (questHelper == null)
             return true;
@@ -479,10 +483,12 @@ public class MQuestScript extends Script {
                     .map(r -> getItemName(r.getId()))
                     .collect(Collectors.joining(", "));
             Microbot.log("Missing items: " + missingNames);
+            Microbot.status = "Missing: " + missingNames;
         }
         else
         {
             Microbot.log("All quest items accounted for (may require withdrawal)");
+            Microbot.status = "All items accounted for";
         }
 
         // Step 3: Determine which items need to be purchased from the GE
