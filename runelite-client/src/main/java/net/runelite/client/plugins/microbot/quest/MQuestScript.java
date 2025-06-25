@@ -453,21 +453,11 @@ public class MQuestScript extends Script {
 
         // Step 2: Check inventory/bank status
         itemsMissing.clear();
-        List<ItemRequirement> withdrawList = new ArrayList<>();
         for (ItemRequirement req : itemRequirements) {
             int invCount = countInventory(req);
             int bankCount = countBank(req);
-            int totalHave = invCount + bankCount;
-            if (totalHave < req.getQuantity()) {
+            if (invCount + bankCount < req.getQuantity()) {
                 itemsMissing.add(req);
-            } else if (invCount < req.getQuantity()) {
-                withdrawList.add(req);
-            }
-        }
-
-        if (!withdrawList.isEmpty()) {
-            if (!unnoteIfNecessary(withdrawList)) {
-                return false;
             }
         }
 
@@ -484,12 +474,7 @@ public class MQuestScript extends Script {
             Microbot.log("Missing items: " + missingNames);
         }
 
-        // Step 3: Try withdrawing/unnoting before buying
-        if (!unnoteIfNecessary(itemsMissing)) {
-            return false;
-        }
-
-        // Step 4: If still missing, add to GE buy list
+        // Step 3: Determine which items need to be purchased from the GE
         grandExchangeItems.clear();
         for (ItemRequirement req : itemsMissing) {
             if (!isBuyableRequirement(req)) {
@@ -510,28 +495,11 @@ public class MQuestScript extends Script {
             if (!buyMissingItems()) {
                 return false;
             }
-            // After buying, try unnoting again (if any bought items came as noted)
-            for (ItemRequirement req : grandExchangeItems) {
-                int unnotedId = req.getId();
-                int notedId = getNotedId(unnotedId);
-                int haveNoted = (notedId != -1) ? Rs2Inventory.itemQuantity(notedId) : 0;
-                int haveUnnoted = Rs2Inventory.itemQuantity(unnotedId);
-                int totalHave = haveUnnoted + haveNoted;
-                int needed = req.getQuantity() - totalHave;
-                if (needed > 0 && haveNoted >= needed) {
-                    if (!Rs2Bank.isOpen()) {
-                        Rs2Bank.openBank();
-                        return false;
-                    }
-                    Rs2Bank.depositAll(notedId); // deposit all noted
-                    Rs2Bank.setWithdrawAsItem();
-                    Rs2Bank.withdrawX(true, unnotedId, needed); // withdraw unnoted
-                    Microbot.log("Unnoting (post-GE) " + getItemName(unnotedId) + " x" + needed);
-                    Microbot.status = "Un-noting items";
-                    waitUntilInventoryCount(unnotedId, req.getQuantity(), 5_000);
-                    return false;
-                }
-            }
+        }
+
+        // Step 4: Withdraw all required items (after GE purchases were made)
+        if (!unnoteIfNecessary(itemRequirements)) {
+            return false;
         }
 
         // Step 5: Final check — did we now get everything?
