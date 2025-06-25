@@ -68,6 +68,9 @@ public class MQuestScript extends Script {
 
     private MQuestConfig config;
     private MQuestPlugin mQuestPlugin;
+
+    private boolean lastAutoBuy = true;
+    private boolean lastBuyNow = false;
     private static ArrayList<Rs2NpcModel> npcsHandled = new ArrayList<>();
     private static ArrayList<TileObject> objectsHandeled = new ArrayList<>();
 
@@ -78,6 +81,8 @@ public class MQuestScript extends Script {
     public boolean run(MQuestConfig config, MQuestPlugin mQuestPlugin) {
         this.config = config;
         this.mQuestPlugin = mQuestPlugin;
+        this.lastAutoBuy = config.autoBuyItems();
+        this.lastBuyNow = config.buyItemsNow();
 
 
         mainScheduledFuture = scheduledExecutorService.scheduleWithFixedDelay(() -> {
@@ -91,8 +96,22 @@ public class MQuestScript extends Script {
 
                 QuestStep questStep = getQuestHelperPlugin().getSelectedQuest().getCurrentStep().getActiveStep();
 
+                boolean autoBuy = config.autoBuyItems();
+                boolean buyNow = config.buyItemsNow();
+                Microbot.log("Config autoBuy=" + autoBuy + ", buyNow=" + buyNow + ", checked=" + requirementsChecked);
+
+                if (buyNow && requirementsChecked) {
+                    Microbot.log("Buy-now toggled; resetting requirement check");
+                    requirementsChecked = false;
+                } else if (autoBuy != lastAutoBuy && autoBuy) {
+                    Microbot.log("Auto-buy enabled; resetting requirement check");
+                    requirementsChecked = false;
+                }
+                lastAutoBuy = autoBuy;
+                lastBuyNow = buyNow;
+
                 if (!requirementsChecked) {
-                    if (config.autoBuyItems() || config.buyItemsNow()) {
+                    if (autoBuy || buyNow) {
                         if (!processItemRequirements())
                             return;
                     } else {
@@ -367,28 +386,29 @@ public class MQuestScript extends Script {
                     Microbot.log("Opened bank to withdraw " + getItemName(unnotedId));
                     return false;
                 }
-                if (hasNotedInv) {
-                    Rs2Bank.depositAll(notedId);
-                    Microbot.log("Deposited noted items before unnoting: " + getItemName(notedId));
-                }
+            if (hasNotedInv) {
+                Rs2Bank.depositAll(notedId);
+                Microbot.log("Deposited noted items before unnoting: " + getItemName(notedId));
+            }
 
-                Rs2Bank.setWithdrawAsItem();
-                int bankUnnoted = Rs2Bank.count(unnotedId);
-                int withdrawUnnoted = Math.min(bankUnnoted, needed);
-                if (withdrawUnnoted > 0) {
-                    Rs2Bank.withdrawX(true, unnotedId, withdrawUnnoted);
-                    needed -= withdrawUnnoted;
-                    Microbot.log("Withdrew " + withdrawUnnoted + " x " + getItemName(unnotedId));
-                }
-                if (needed > 0 && notedId != -1 && Rs2Bank.count(notedId) > 0) {
-                    Rs2Bank.withdrawX(true, notedId, needed);
-                    Microbot.log("Withdrew noted " + needed + " x " + getItemName(notedId));
-                }
+            Rs2Bank.setWithdrawAsItem();
+            int bankUnnoted = Rs2Bank.count(unnotedId);
+            int withdrawUnnoted = Math.min(bankUnnoted, needed);
+            if (withdrawUnnoted > 0) {
+                Rs2Bank.withdrawX(true, unnotedId, withdrawUnnoted);
+                needed -= withdrawUnnoted;
+                Microbot.log("Withdrew " + withdrawUnnoted + " x " + getItemName(unnotedId));
+            }
+            if (needed > 0 && notedId != -1 && Rs2Bank.count(notedId) > 0) {
+                Rs2Bank.withdrawX(true, notedId, needed);
+                Microbot.log("Withdrew noted " + needed + " x " + getItemName(notedId));
+            }
 
-                Microbot.log("Withdrawing required items " + getItemName(unnotedId));
-                Microbot.status = "Withdrawing items";
-                waitUntilInventoryCount(unnotedId, req.getQuantity(), 5_000);
-                return false;
+            Microbot.log("Withdrawing required items " + getItemName(unnotedId));
+            Microbot.status = "Withdrawing items";
+            waitUntilInventoryCount(unnotedId, req.getQuantity(), 5_000);
+            Microbot.log("Inventory now has " + Rs2Inventory.itemQuantity(unnotedId) + " x " + getItemName(unnotedId));
+            return false;
             }
             else {
                 Microbot.log("Requirement not found in bank: " + getItemName(unnotedId));
@@ -580,6 +600,7 @@ public class MQuestScript extends Script {
 
         // Step 4: Withdraw all required items (after GE purchases were made)
         if (needsWithdraw) {
+            Microbot.log("Withdrawing items from bank after GE");
             if (!unnoteIfNecessary(itemRequirements)) {
                 return false;
             }
@@ -599,6 +620,8 @@ public class MQuestScript extends Script {
                     itemsMissing.stream().map(r -> getItemName(r.getId())).collect(Collectors.joining(", ")));
             return false; // or you could choose to throw, halt, or handle differently
         }
+
+        Microbot.log("All required items present in inventory");
 
         return true;
     }
@@ -626,10 +649,15 @@ public class MQuestScript extends Script {
             return true;
         }
 
+        Microbot.log("Walking to GE for purchases");
+        Rs2Walker.walkTo(new WorldPoint(3164, 3485, 0));
+
         boolean result = GEHelper.buyRequirements(grandExchangeItems);
         if (!result) {
             return false;
         }
+
+        Microbot.log("GE purchases completed");
 
         Microbot.getConfigManager().setConfiguration("quest", "buyItemsNow", false);
 
