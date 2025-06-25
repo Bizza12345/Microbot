@@ -92,8 +92,12 @@ public class MQuestScript extends Script {
                 QuestStep questStep = getQuestHelperPlugin().getSelectedQuest().getCurrentStep().getActiveStep();
 
                 if (!requirementsChecked) {
-                    if (!processItemRequirements())
-                        return;
+                    if (config.autoBuyItems() || config.buyItemsNow()) {
+                        if (!processItemRequirements())
+                            return;
+                    } else {
+                        Microbot.log("Skipping requirement check - auto buy disabled and buy now not set");
+                    }
                     requirementsChecked = true;
                 }
 
@@ -483,6 +487,13 @@ public class MQuestScript extends Script {
             return true;
 
         // Step 2: Check inventory/bank status
+        if (Rs2Bank.bankItems().isEmpty() && !Rs2Bank.isOpen()) {
+            Microbot.log("Opening bank to refresh items");
+            Rs2Bank.openBank();
+            sleepUntil(Rs2Bank::isOpen, 5000);
+            Rs2Bank.closeBank();
+        }
+
         itemsMissing.clear();
         boolean needsWithdraw = false;
         for (ItemRequirement req : itemRequirements)
@@ -522,6 +533,7 @@ public class MQuestScript extends Script {
         // Step 3: Determine which items need to be purchased from the GE
         grandExchangeItems.clear();
         QuestState questState = questHelper.getQuest().getState(Microbot.getClient());
+        Microbot.log("Quest state: " + questState);
         boolean allowGE = (questState == QuestState.NOT_STARTED && config.autoBuyItems()) || config.buyItemsNow();
         if (!allowGE) {
             Microbot.log("GE buying skipped - quest already started or disabled");
