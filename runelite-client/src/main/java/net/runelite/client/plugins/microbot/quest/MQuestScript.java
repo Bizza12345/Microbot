@@ -521,6 +521,11 @@ public class MQuestScript extends Script {
 
         // Step 3: Determine which items need to be purchased from the GE
         grandExchangeItems.clear();
+        QuestState questState = questHelper.getQuest().getState(Microbot.getClient());
+        boolean allowGE = (questState == QuestState.NOT_STARTED && config.autoBuyItems()) || config.buyItemsNow();
+        if (!allowGE) {
+            Microbot.log("GE buying skipped - quest already started or disabled");
+        }
         for (ItemRequirement req : itemsMissing) {
             if (!isBuyableRequirement(req)) {
                 Microbot.log("Skipping GE buy for missing requirement: Name=" + req.getName()
@@ -528,7 +533,10 @@ public class MQuestScript extends Script {
                         + ", GE Name=" + getItemName(req.getId()));
                 continue;
             }
-            grandExchangeItems.add(req);
+            if (allowGE)
+            {
+                grandExchangeItems.add(req);
+            }
         }
 
         if (!grandExchangeItems.isEmpty()) {
@@ -595,6 +603,8 @@ public class MQuestScript extends Script {
         if (!result) {
             return false;
         }
+
+        Microbot.getConfigManager().setConfiguration("quest", "buyItemsNow", false);
 
         grandExchangeItems.clear();
         Microbot.status = "Finished buying. Resuming Questing";

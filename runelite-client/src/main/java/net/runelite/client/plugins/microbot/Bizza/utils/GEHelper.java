@@ -4,6 +4,9 @@ import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.util.bank.Rs2Bank;
 import net.runelite.client.plugins.microbot.util.grandexchange.Rs2GrandExchange;
 import net.runelite.client.plugins.microbot.util.grandexchange.GrandExchangeSlots;
+import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
+import net.runelite.client.plugins.microbot.util.player.Rs2Player;
+import net.runelite.api.coords.WorldPoint;
 import org.apache.commons.lang3.tuple.Pair;
 import net.runelite.client.plugins.microbot.questhelper.requirements.item.ItemRequirement;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
@@ -17,6 +20,8 @@ import static net.runelite.client.plugins.microbot.util.Global.sleepUntil;
  * handle collecting them to the bank.
  */
 public class GEHelper {
+
+    private static final WorldPoint GE_LOCATION = new WorldPoint(3164, 3485, 0);
 
     /**
      * Attempts to buy all provided item requirements using the Grand Exchange.
@@ -33,6 +38,10 @@ public class GEHelper {
         }
 
         if (!Rs2GrandExchange.isOpen()) {
+            Microbot.status = "Walking to GE";
+            Rs2Walker.walkTo(GE_LOCATION);
+            sleepUntil(() -> Rs2Player.getWorldLocation().distanceTo(GE_LOCATION) < 5, 60000);
+
             Microbot.status = "Opening Grand Exchange";
             Rs2GrandExchange.openExchange();
             sleepUntil(Rs2GrandExchange::isOpen, 5000);
