@@ -314,10 +314,13 @@ public class MQuestScript extends Script {
         int waited = 0;
         int poll = 200;
         while (waited < timeoutMs) {
-            if (Rs2Inventory.itemQuantity(itemId) >= target) return;
+            if (Rs2Inventory.itemQuantity(itemId) >= target) {
+                return;
+            }
             sleep(poll);
             waited += poll;
         }
+        Microbot.log("Timeout waiting for inventory count of " + getItemName(itemId));
     }
 
     /**
@@ -414,6 +417,7 @@ public class MQuestScript extends Script {
                 Microbot.log("Requirement not found in bank: " + getItemName(unnotedId));
             }
         }
+        Microbot.log("Finished withdrawing required items");
         return true;
     }
 
@@ -455,6 +459,7 @@ public class MQuestScript extends Script {
         grandExchangeItems = new ArrayList<>();
         // allow requirement processing again on next run
         requirementsChecked = false;
+        Microbot.log("Quest script reset; requirement check cleared");
     }
     private boolean waitUntilItemBought(ItemRequirement req, int timeoutMs) {
         int waited = 0;
@@ -649,10 +654,12 @@ public class MQuestScript extends Script {
             return true;
         }
 
+        Microbot.log("buyMissingItems called with " + grandExchangeItems.size() + " items");
         Microbot.log("Walking to GE for purchases");
         Rs2Walker.walkTo(new WorldPoint(3164, 3485, 0));
 
         boolean result = GEHelper.buyRequirements(grandExchangeItems);
+        Microbot.log("buyMissingItems result=" + result);
         if (!result) {
             return false;
         }
