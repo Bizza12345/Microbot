@@ -453,25 +453,36 @@ public class MQuestScript extends Script {
 
         // Step 2: Check inventory/bank status
         itemsMissing.clear();
-        for (ItemRequirement req : itemRequirements) {
+        boolean needsWithdraw = false;
+        for (ItemRequirement req : itemRequirements)
+        {
             int invCount = countInventory(req);
             int bankCount = countBank(req);
-            if (invCount + bankCount < req.getQuantity()) {
-                itemsMissing.add(req);
+
+            if (invCount < req.getQuantity())
+            {
+                if (invCount + bankCount >= req.getQuantity())
+                {
+                    // We own enough but need to pull from the bank
+                    needsWithdraw = true;
+                }
+                else
+                {
+                    itemsMissing.add(req);
+                }
             }
         }
 
-        if (itemsMissing.isEmpty())
-        {
-            Microbot.log("All quest items accounted for");
-            return true;
-        }
-        else
+        if (!itemsMissing.isEmpty())
         {
             String missingNames = itemsMissing.stream()
                     .map(r -> getItemName(r.getId()))
                     .collect(Collectors.joining(", "));
             Microbot.log("Missing items: " + missingNames);
+        }
+        else
+        {
+            Microbot.log("All quest items accounted for (may require withdrawal)");
         }
 
         // Step 3: Determine which items need to be purchased from the GE
@@ -495,17 +506,22 @@ public class MQuestScript extends Script {
             if (!buyMissingItems()) {
                 return false;
             }
+            needsWithdraw = true;
         }
 
         // Step 4: Withdraw all required items (after GE purchases were made)
-        if (!unnoteIfNecessary(itemRequirements)) {
-            return false;
+        if (needsWithdraw) {
+            if (!unnoteIfNecessary(itemRequirements)) {
+                return false;
+            }
         }
 
-        // Step 5: Final check — did we now get everything?
+        // Step 5: Final check — ensure items are in inventory
         itemsMissing.clear();
-        for (ItemRequirement req : itemRequirements) {
-            if (countTotal(req) < req.getQuantity()) {
+        for (ItemRequirement req : itemRequirements)
+        {
+            if (countInventory(req) < req.getQuantity())
+            {
                 itemsMissing.add(req);
             }
         }
