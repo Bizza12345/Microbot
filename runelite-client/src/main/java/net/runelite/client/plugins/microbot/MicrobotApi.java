@@ -43,15 +43,19 @@ public class MicrobotApi {
      * @return the UUID of the newly opened session.
      * @throws IOException if the HTTP request fails, the response body is invalid, or the UUID parsing fails.
      */
-    public UUID microbotOpen() throws IOException {
+    public UUID microbotOpen() {
+        if (microbotApiUrl == null || microbotApiUrl.isEmpty()) {
+            return null;
+        }
         try (Response response = client.newCall(new Request.Builder().url(microbotApiUrl + "/session").build()).execute()) {
             ResponseBody body = response.body();
 
             InputStream in = body.byteStream();
             return gson.fromJson(new InputStreamReader(in, StandardCharsets.UTF_8), UUID.class);
-        } catch (JsonParseException | IllegalArgumentException ex) // UUID.fromString can throw IllegalArgumentException
+        } catch (Exception ex) // network disabled or invalid url
         {
-            throw new IOException(ex);
+            Microbot.log("Microbot API disabled: " + ex.getMessage());
+            return null;
         }
     }
 
@@ -71,13 +75,18 @@ public class MicrobotApi {
      * @param loggedIn the login status to send with the ping.
      * @throws IOException if the HTTP request fails or the response is unsuccessful.
      */
-    public void microbotPing(UUID uuid, boolean loggedIn) throws IOException {
+    public void microbotPing(UUID uuid, boolean loggedIn) {
+        if (microbotApiUrl == null || microbotApiUrl.isEmpty() || uuid == null) {
+            return;
+        }
         try (Response response = client.newCall(new Request.Builder().url(microbotApiUrl + "/session?sessionId=" + uuid.toString()
                 + "&isLoggedIn=" + loggedIn
                 + "&version=" + RuneLiteProperties.getMicrobotVersion()).build()).execute()) {
             if (!response.isSuccessful()) {
-                throw new IOException("Unsuccessful ping");
+                Microbot.log("Unsuccessful ping to microbot api");
             }
+        } catch (Exception ex) {
+            Microbot.log("Microbot API ping failed: " + ex.getMessage());
         }
     }
 
@@ -91,13 +100,20 @@ public class MicrobotApi {
      * @param uuid the unique identifier of the session to be deleted.
      * @throws IOException if an I/O error occurs during the HTTP request.
      */
-    public void microbotDelete(UUID uuid) throws IOException {
+    public void microbotDelete(UUID uuid) {
+        if (microbotApiUrl == null || microbotApiUrl.isEmpty() || uuid == null) {
+            return;
+        }
         Request request = new Request.Builder()
                 .delete()
                 .url(microbotApiUrl + "/session?sessionId=" + uuid)
                 .build();
 
-        client.newCall(request).execute().close();
+        try {
+            client.newCall(request).execute().close();
+        } catch (Exception ex) {
+            Microbot.log("Microbot API delete failed: " + ex.getMessage());
+        }
     }
 
     /**
@@ -121,8 +137,8 @@ public class MicrobotApi {
      *
      * @throws IOException if the HTTP request fails or if the response indicates an error.
      */
-    public void sendScriptStatistics() throws IOException {
-        if (Microbot.isDebug()) return;
+    public void sendScriptStatistics() {
+        if (Microbot.isDebug() || microbotApiUrl == null || microbotApiUrl.isEmpty()) return;
 
         Map<String, Integer> scriptRuntimeMap = Microbot.getActiveScripts().stream()
                 .collect(Collectors.toMap(
@@ -134,8 +150,10 @@ public class MicrobotApi {
                 .build())
                 .execute()) {
             if (!response.isSuccessful()) {
-                throw new IOException("Unsuccessful in sending runtime statistics to api");
+                Microbot.log("Unsuccessful in sending runtime statistics to api");
             }
+        } catch (Exception ex) {
+            Microbot.log("Microbot API stats failed: " + ex.getMessage());
         }
     }
 }
