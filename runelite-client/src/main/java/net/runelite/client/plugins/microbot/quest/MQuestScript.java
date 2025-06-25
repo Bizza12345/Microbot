@@ -318,7 +318,8 @@ public class MQuestScript extends Script {
      */
     private int countInventoryAll(ItemRequirement req) {
         int count = 0;
-        for (int id : getAllPossibleIds(req)) {
+        for (int id : getAllPossibleIds(req))
+        {
             count += Rs2Inventory.itemQuantity(id);
         }
         return count;
@@ -326,14 +327,25 @@ public class MQuestScript extends Script {
 
     private int countBank(ItemRequirement req) {
         int count = 0;
-        for (int id : getAllPossibleIds(req)) {
+        for (int id : getAllPossibleIds(req))
+        {
             count += Rs2Bank.count(id);
         }
         return count;
     }
 
-    private int countTotal(ItemRequirement req) {
-        return countInventory(req) + countBank(req);
+    /**
+     * Count quantity owned across both inventory and bank (noted and unnoted).
+     */
+    private int countOwned(ItemRequirement req)
+    {
+        int count = 0;
+        for (int id : getAllPossibleIds(req))
+        {
+            count += Rs2Inventory.itemQuantity(id);
+            count += Rs2Bank.count(id);
+        }
+        return count;
     }
 
     private boolean unnoteIfNecessary(List<ItemRequirement> requirements) {
@@ -341,6 +353,8 @@ public class MQuestScript extends Script {
             int invCount = countInventory(req);
             int needed = req.getQuantity() - invCount;
             if (needed <= 0) continue;
+
+            Microbot.log("Need to withdraw " + needed + " x " + getItemName(req.getId()));
 
             int unnotedId = req.getId();
             int notedId = getNotedId(unnotedId);
@@ -498,21 +512,22 @@ public class MQuestScript extends Script {
         boolean needsWithdraw = false;
         for (ItemRequirement req : itemRequirements)
         {
+            int owned = countOwned(req);
             int invUnnoted = countInventory(req);
-            int invTotal = countInventoryAll(req);
-            int bankCount = countBank(req);
 
-            if (invUnnoted < req.getQuantity())
+            Microbot.log("Requirement check " + getItemName(req.getId()) +
+                    " inv=" + invUnnoted + " owned=" + owned + " needed=" + req.getQuantity());
+
+            if (owned >= req.getQuantity())
             {
-                if (invTotal + bankCount >= req.getQuantity())
+                if (invUnnoted < req.getQuantity())
                 {
-                    // We own enough overall but need to withdraw or unnote
                     needsWithdraw = true;
                 }
-                else
-                {
-                    itemsMissing.add(req);
-                }
+            }
+            else
+            {
+                itemsMissing.add(req);
             }
         }
 
