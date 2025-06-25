@@ -753,8 +753,13 @@ public class Rs2GrandExchange {
     }
 
     public static boolean isSlotAvailable(GrandExchangeSlots slot) {
+        if (slot == null) {
+            return false;
+        }
         Widget parent = getSlot(slot);
-        return Optional.ofNullable(parent).map(p -> p.getChild(2).isSelfHidden()).orElse(false);
+        return Optional.ofNullable(parent)
+                .map(p -> p.getChild(2).isSelfHidden())
+                .orElse(false);
     }
 
     public static Widget getOfferBuyButton(GrandExchangeSlots slot) {

@@ -3,6 +3,8 @@ package net.runelite.client.plugins.microbot.Bizza.utils;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.util.bank.Rs2Bank;
 import net.runelite.client.plugins.microbot.util.grandexchange.Rs2GrandExchange;
+import net.runelite.client.plugins.microbot.util.grandexchange.GrandExchangeSlots;
+import org.apache.commons.lang3.tuple.Pair;
 import net.runelite.client.plugins.microbot.questhelper.requirements.item.ItemRequirement;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
 import java.util.List;
@@ -58,8 +60,11 @@ public class GEHelper {
             }
             Microbot.log("Offer placed for " + name);
             Microbot.status = "Waiting on offer";
-            // Small wait for the item to complete
-            sleepUntil(() -> Rs2GrandExchange.isSlotAvailable(Rs2GrandExchange.getAvailableSlot().getLeft()), 3000);
+            // wait until a slot becomes free indicating the offer completed
+            sleepUntil(() -> {
+                Pair<GrandExchangeSlots, Integer> slotInfo = Rs2GrandExchange.getAvailableSlot();
+                return slotInfo.getLeft() != null && Rs2GrandExchange.isSlotAvailable(slotInfo.getLeft());
+            }, 3000);
         }
         Microbot.status = "Collecting items";
         Rs2GrandExchange.collectToBank();
