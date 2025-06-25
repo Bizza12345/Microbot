@@ -30,7 +30,7 @@ public class GEHelper {
 
         if (!Rs2GrandExchange.isOpen()) {
             Rs2GrandExchange.openExchange();
-            return false;
+            sleepUntil(Rs2GrandExchange::isOpen, 5000);
         }
 
         // Make a copy to avoid modification issues
@@ -56,12 +56,14 @@ public class GEHelper {
         }
 
         Rs2GrandExchange.collectToBank();
+        Microbot.log("Collecting GE items to bank");
 
         if (!Rs2Bank.isOpen()) {
             Rs2Bank.openBank();
-            return false;
+            sleepUntil(Rs2Bank::isOpen, 5000);
         }
         Rs2Bank.depositAll();
+        Microbot.log("Deposited inventory after GE buy");
         Rs2Bank.closeBank();
 
         Microbot.log("GEHelper finished buying items");

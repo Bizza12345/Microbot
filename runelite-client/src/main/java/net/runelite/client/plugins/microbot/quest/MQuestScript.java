@@ -254,10 +254,11 @@ public class MQuestScript extends Script {
     private int getNotedId(int unnotedId) {
         ItemComposition comp = Microbot.getClientThread().runOnClientThreadOptional(() ->
                 Microbot.getItemManager().getItemComposition(unnotedId)).orElse(null);
-        if (comp != null && comp.getNote() != 799) {
+        if (comp != null && comp.getNote() == -1) { // unnoted item
             int linked = comp.getLinkedNoteId();
-            if (linked > 0 && linked != unnotedId)
+            if (linked > 0 && linked != unnotedId) {
                 return linked;
+            }
         }
         return -1;
     }
@@ -266,10 +267,11 @@ public class MQuestScript extends Script {
     private int getUnnotedId(int notedId) {
         ItemComposition comp = Microbot.getClientThread().runOnClientThreadOptional(() ->
                 Microbot.getItemManager().getItemComposition(notedId)).orElse(null);
-        if (comp != null && comp.getNote() == 799) {
+        if (comp != null && comp.getNote() == 799) { // noted item
             int linked = comp.getLinkedNoteId();
-            if (linked > 0 && linked != notedId)
+            if (linked > 0 && linked != notedId) {
                 return linked;
+            }
         }
         return -1;
     }
@@ -319,10 +321,12 @@ public class MQuestScript extends Script {
             if (hasBank || hasNotedInv) {
                 if (!Rs2Bank.isOpen()) {
                     Rs2Bank.openBank();
+                    Microbot.log("Opened bank to withdraw " + getItemName(unnotedId));
                     return false;
                 }
                 if (hasNotedInv) {
                     Rs2Bank.depositAll(notedId);
+                    Microbot.log("Deposited noted items before unnoting: " + getItemName(notedId));
                 }
 
                 Rs2Bank.setWithdrawAsItem();
@@ -331,9 +335,11 @@ public class MQuestScript extends Script {
                 if (withdrawUnnoted > 0) {
                     Rs2Bank.withdrawX(true, unnotedId, withdrawUnnoted);
                     needed -= withdrawUnnoted;
+                    Microbot.log("Withdrew " + withdrawUnnoted + " x " + getItemName(unnotedId));
                 }
                 if (needed > 0 && notedId != -1 && Rs2Bank.count(notedId) > 0) {
                     Rs2Bank.withdrawX(true, notedId, needed);
+                    Microbot.log("Withdrew noted " + needed + " x " + getItemName(notedId));
                 }
 
                 Microbot.log("Withdrawing required items " + getItemName(unnotedId));
