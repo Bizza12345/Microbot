@@ -26,3 +26,12 @@ The `pom.xml` configures `maven-resources-plugin` version `3.3.1` so Maven does
 not try to download the default 2.6 plugin when offline.
 
 These steps let Codex build the project in future prompts without reaching external repositories.
+
+## Useful paths
+- Microbot scripts: `runelite-client/src/main/java/net/runelite/client/plugins/microbot`
+- Microbot utilities: `runelite-client/src/main/java/net/runelite/client/plugins/microbot/util`
+- RuneLite API sources: `runelite-api/src/main/java/net/runelite/api`
+- RuneLite plugins: `runelite-client/src/main/java/net/runelite/client/plugins`
+- Build output: `runelite-client/target` after running Maven
+
+The `docs/development.md` file contains additional guidance on creating scripts and shows code samples for common tasks.
