@@ -3,18 +3,17 @@ package net.runelite.client.plugins.microbot;
 import com.google.gson.Gson;
 import com.google.gson.JsonParseException;
 import net.runelite.client.RuneLiteProperties;
-import okhttp3.*;
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.Response;
+import okhttp3.ResponseBody;
 
 import javax.inject.Inject;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
-import java.util.Map;
 import java.util.UUID;
-import java.util.stream.Collectors;
-
-import static net.runelite.http.api.RuneLiteAPI.JSON;
 
 /**
  * Class that communicates with the microbot api
@@ -115,6 +114,7 @@ public class MicrobotApi {
             Microbot.log("Microbot API delete failed: " + ex.getMessage());
         }
     }
+<<<<<<< bizzadex/update-agents.md-for-mquester-addon
 
     /**
      * Sends the runtime statistics of active scripts to a remote API endpoint.
@@ -165,4 +165,6 @@ class ScriptStats {
     ScriptStats(Map<String, Integer> scriptRunTimes) {
         this.scriptRunTimes = scriptRunTimes;
     }
+=======
+>>>>>>> development
 }
