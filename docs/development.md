@@ -6,9 +6,11 @@
 
 ---
 
-Since Microbot is a fork of runelite you can simply follow the runelite wiki on how to use intelij to setup a development environment
+Since Microbot is a fork of RuneLite you can simply follow the RuneLite wiki on how to use IntelliJ to set up a development environment:
 
 https://github.com/runelite/runelite/wiki/Building-with-IntelliJ-IDEA
+
+If Maven dependencies are missing you can use the helper script `scripts/setup-m2.sh` to download a pre-populated `~/.m2` folder.
 
 ## Project Structure
 
@@ -211,6 +213,14 @@ Coming soon!
 ### UI Configs
 
 Coming soon!
+
+### Best practices for scripts
+
+- Keep the main loop lightweight and avoid long blocking operations.
+- Reuse the helper classes in `microbot.util` whenever possible instead of duplicating logic.
+- Log important actions with `Microbot.status` so the overlay reflects what the script is doing.
+- Use `sleep()` and `sleepUntil()` from `Global` utilities to pace actions instead of `Thread.sleep`.
+- Guard against null pointers when interacting with game objects or widgets.
 
 ---
 

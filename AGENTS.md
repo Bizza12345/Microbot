@@ -15,6 +15,10 @@ To build Microbot without network access:
 2. Download the pre-populated Maven repository archive from:
    https://drive.google.com/file/d/1KrGFnI5IIJImsfH7jDnrQ7pHeNTNZk8n/view?usp=sharing
    Unzip it into your home directory so the contents reside in `~/.m2`.
+   You can automate this step using `scripts/setup-m2.sh`:
+   ```bash
+   ./scripts/setup-m2.sh
+   ```
 
 3. Build offline using Maven:
    ```bash
@@ -24,6 +28,10 @@ To build Microbot without network access:
 
 The `pom.xml` configures `maven-resources-plugin` version `3.3.1` so Maven does
 not try to download the default 2.6 plugin when offline.
+
+Even though developers use JDK 17, the project compiles for Java 11 as specified
+in the POM. This keeps compatibility with RuneLite while allowing JDK 17 to run
+the build.
 
 These steps let Codex build the project in future prompts without reaching external repositories.
 

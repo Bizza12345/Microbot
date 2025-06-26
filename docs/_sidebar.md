@@ -1,5 +1,6 @@
 - **Start botting**
     - Install Microbot
+    - [Setup Maven cache](setup-m2.md)
 - [**Development**](Development.md)
     - **API**
       * [Rs2Bank](api/apidocs/net/runelite/client/plugins/microbot/util/bank/Rs2Bank.html)
