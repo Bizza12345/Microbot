@@ -18,10 +18,12 @@ public class PieOverlay extends OverlayPanel {
         super(plugin);
         setPosition(OverlayPosition.TOP_LEFT);
         setNaughty();
+        Microbot.log("PieOverlay initialized");
     }
     @Override
     public Dimension render(Graphics2D graphics) {
         try {
+            Microbot.log("PieOverlay.render() - updating overlay");
             panelComponent.setPreferredSize(new Dimension(275, 700));
             panelComponent.getChildren().add(TitleComponent.builder()
                     .text("Nate's Shell Maker")

@@ -44,14 +44,19 @@ public class PiePlugin extends Plugin {
     @Override
     protected void startUp() throws AWTException {
         PieScript.totalPieShellsMade = 0;
-		Microbot.pauseAllScripts.compareAndSet(true, false);
+        Microbot.status = "Starting Nate Pie Shell Maker";
+        Microbot.log("PiePlugin.startUp() - Initializing plugin");
+        Microbot.pauseAllScripts.compareAndSet(true, false);
         if (overlayManager != null) {
             overlayManager.add(pieOverlay);
         }
+        Microbot.log("PiePlugin.startUp() - Running script");
         pieScript.run(config);
     }
 
     protected void shutDown() {
+        Microbot.status = "Stopped Nate Pie Shell Maker";
+        Microbot.log("PiePlugin.shutDown() - Shutting down plugin");
         pieScript.shutdown();
         overlayManager.remove(pieOverlay);
     }

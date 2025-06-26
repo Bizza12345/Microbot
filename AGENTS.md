@@ -51,3 +51,6 @@ These steps let Codex build the project in future prompts without reaching exter
 - Example script: `runelite-client/src/main/java/net/runelite/client/plugins/microbot/example`
 
 The `docs/development.md` file contains additional guidance on creating scripts and shows code samples for common tasks.
+
+## Current task
+- `runelite-client/src/main/java/net/runelite/client/plugins/microbot/nateplugins/moneymaking/natepieshells` - Uplifting the plugin to add buying of materials from the Grand Exchange.
