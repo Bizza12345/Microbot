@@ -2,7 +2,9 @@ package net.runelite.client.plugins.microbot.nateplugins.moneymaking.natepieshel
 
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.Script;
+import net.runelite.api.ItemID;
 import net.runelite.client.plugins.microbot.util.bank.Rs2Bank;
+import net.runelite.client.plugins.microbot.util.grandexchange.Rs2GrandExchange;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
 import net.runelite.client.plugins.microbot.util.widget.Rs2Widget;
 
@@ -13,7 +15,11 @@ public class PieScript extends Script {
     public static double version = 1.2;
     public static int totalPieShellsMade = 0;
 
+    private IngredientPrices ingredientPrices;
+    private PieConfig config;
+
     public boolean run(PieConfig config) {
+        this.config = config;
         Microbot.status = "Starting Nate Pie Shell Maker";
         Microbot.log("PieScript.run() - Script started");
         mainScheduledFuture = scheduledExecutorService.scheduleWithFixedDelay(() -> {
@@ -52,10 +58,15 @@ public class PieScript extends Script {
         Microbot.status = "Banking";
         Microbot.log("PieScript.bank() - Opening bank");
         Rs2Bank.openBank();
-        if(Rs2Bank.isOpen()){
+        if (Rs2Bank.isOpen()) {
             Microbot.log("PieScript.bank() - Bank opened");
             Rs2Bank.depositAll();
-            if(Rs2Bank.hasItem("pie dish") &&  Rs2Bank.hasItem("pastry dough")) {
+
+            if (config.enableGEBuying()) {
+                handleGrandExchange();
+            }
+
+            if (Rs2Bank.hasItem("pie dish") && Rs2Bank.hasItem("pastry dough")) {
                 Microbot.log("PieScript.bank() - Withdrawing materials");
                 Rs2Bank.withdrawX(true, "pie dish", 14);
                 sleepUntilOnClientThread(() -> Rs2Inventory.hasItem("pie dish"));
@@ -63,12 +74,63 @@ public class PieScript extends Script {
                 sleepUntilOnClientThread(() -> Rs2Inventory.hasItem("pastry dough"));
             } else {
                 Microbot.log("PieScript.bank() - Out of materials");
-                Microbot.getNotifier().notify("Run out of Materials");
-                shutdown();
+                if (!config.enableGEBuying()) {
+                    Microbot.getNotifier().notify("Run out of Materials");
+                    shutdown();
+                }
             }
         }
         Rs2Bank.closeBank();
         Microbot.log("PieScript.bank() - Closing bank");
         sleepUntilOnClientThread(() -> !Rs2Bank.isOpen());
+    }
+
+    private void handleGrandExchange() {
+        if (Rs2Bank.hasItem("pie shell")) {
+            Rs2Bank.withdrawAll(true, "pie shell");
+            sleepUntilOnClientThread(() -> Rs2Inventory.hasItem("pie shell"));
+        }
+
+        if (Rs2Inventory.hasItem("pie shell")) {
+            Rs2GrandExchange.walkToGrandExchange();
+            Rs2GrandExchange.openExchange();
+            while (Rs2Inventory.hasItem("pie shell")) {
+                Rs2GrandExchange.sellItemUnder5Percent("pie shell");
+                sleepUntilOnClientThread(Rs2GrandExchange::hasFinishedSellingOffers);
+            }
+            Rs2GrandExchange.collectToBank();
+            Rs2GrandExchange.closeExchange();
+            Rs2Bank.walkToBank();
+            Rs2Bank.openBank();
+            Rs2Bank.depositAll();
+        }
+
+        int coins = Rs2Inventory.count(ItemID.COINS_995) + Rs2Bank.count(ItemID.COINS_995);
+        if (coins <= 0) {
+            return;
+        }
+
+        int doughPrice = Rs2GrandExchange.getPrice(ItemID.PASTRY_DOUGH);
+        int dishPrice = Rs2GrandExchange.getPrice(ItemID.PIE_DISH);
+        ingredientPrices = new IngredientPrices(doughPrice, dishPrice);
+
+        int setCost = doughPrice + dishPrice;
+        int setsAffordable = coins / setCost;
+        int quantity = Math.min(setsAffordable * 14, 196);
+        if (quantity <= 0) return;
+
+        if (Rs2Bank.count(ItemID.COINS_995) > 0) {
+            Rs2Bank.withdrawAll(ItemID.COINS_995);
+            sleepUntilOnClientThread(() -> Rs2Inventory.count(ItemID.COINS_995) > 0);
+        }
+
+        Rs2GrandExchange.walkToGrandExchange();
+        Rs2GrandExchange.openExchange();
+        Rs2GrandExchange.buyItemAbove5Percent("pastry dough", quantity);
+        Rs2GrandExchange.buyItemAbove5Percent("pie dish", quantity);
+        Rs2GrandExchange.collectToBank();
+        Rs2GrandExchange.closeExchange();
+        Rs2Bank.walkToBank();
+        Rs2Bank.openBank();
     }
 }
