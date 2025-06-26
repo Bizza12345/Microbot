@@ -11,6 +11,11 @@ Since Microbot is a fork of RuneLite you can simply follow the RuneLite wiki on 
 https://github.com/runelite/runelite/wiki/Building-with-IntelliJ-IDEA
 
 If Maven dependencies are missing you can use the helper script `scripts/setup-m2.sh` to download a pre-populated `~/.m2` folder.
+When packaging the project, set `MAVEN_OPTS="-Xmx2g"` to avoid out-of-memory errors:
+
+```bash
+MAVEN_OPTS="-Xmx2g" mvn -o -DskipTests package
+```
 
 ## Project Structure
 

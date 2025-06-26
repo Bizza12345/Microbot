@@ -12,13 +12,20 @@ To build Microbot without network access:
    sudo update-alternatives --set javac /usr/lib/jvm/java-17-openjdk-amd64/bin/javac
    ```
 
+   Install the helper script prerequisites as well:
+   ```bash
+   sudo apt-get install -y curl unzip
+   pip install --user gdown
+   ```
+
 2. Download the pre-populated Maven repository archive from:
    https://drive.google.com/file/d/1KrGFnI5IIJImsfH7jDnrQ7pHeNTNZk8n/view?usp=sharing
    Unzip it into your home directory so the contents reside in `~/.m2`.
-   You can automate this step using `scripts/setup-m2.sh`:
+   The helper script uses `gdown` to fetch the file:
    ```bash
    ./scripts/setup-m2.sh
    ```
+   If `gdown` is not found it will attempt to install it using `pip`.
 
 3. Build offline using Maven:
    ```bash
