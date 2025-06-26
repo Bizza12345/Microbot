@@ -417,6 +417,10 @@ public class MQuestScript extends Script {
                 Microbot.log("Requirement not found in bank: " + getItemName(unnotedId));
             }
         }
+
+        if (Rs2Bank.isOpen()) {
+            Rs2Bank.closeBank();
+        }
         Microbot.log("Finished withdrawing required items");
         return true;
     }
