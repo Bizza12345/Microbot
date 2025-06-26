@@ -1,10 +1,17 @@
 # Pre-populated Maven repository
 
 To build Microbot without network access you can download a prebuilt `.m2` folder.
-Run the helper script from the project root:
+Install the prerequisites if they are missing:
+
+```bash
+sudo apt-get install -y curl unzip
+pip install --user gdown
+```
+
+Then run the helper script from the project root:
 
 ```bash
 ./scripts/setup-m2.sh
 ```
 
-This downloads the archive from Google Drive and extracts it to `~/.m2`.
+The archive is fetched from Google Drive and unpacked so that the cache resides in `~/.m2/repository`.
