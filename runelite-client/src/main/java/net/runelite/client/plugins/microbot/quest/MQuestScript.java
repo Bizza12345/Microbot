@@ -14,11 +14,11 @@ import net.runelite.client.plugins.microbot.questhelper.QuestHelperPlugin;
 import net.runelite.client.plugins.microbot.questhelper.questinfo.QuestHelperQuest;
 import net.runelite.client.plugins.microbot.questhelper.requirements.Requirement;
 import net.runelite.client.plugins.microbot.questhelper.requirements.item.ItemRequirement;
+import net.runelite.client.plugins.microbot.questhelper.requirements.item.ItemRequirements;
 import net.runelite.client.plugins.microbot.questhelper.steps.*;
 import net.runelite.client.plugins.microbot.questhelper.steps.widget.WidgetHighlight;
 import net.runelite.client.plugins.microbot.shortestpath.ShortestPathPlugin;
 import net.runelite.client.plugins.microbot.util.bank.Rs2Bank;
-import net.runelite.client.plugins.microbot.util.grandexchange.Rs2GrandExchange;
 import net.runelite.client.plugins.microbot.util.camera.Rs2Camera;
 import net.runelite.client.plugins.microbot.util.combat.Rs2Combat;
 import net.runelite.client.plugins.microbot.util.dialogues.Rs2Dialogue;
@@ -37,6 +37,7 @@ import net.runelite.client.plugins.microbot.util.tile.Rs2Tile;
 import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
 import net.runelite.client.plugins.microbot.util.widget.Rs2Widget;
 import net.runelite.api.ItemComposition;
+import net.runelite.client.plugins.microbot.Bizza.utils.GEHelper;
 
 import java.awt.*;
 import java.awt.event.KeyEvent;
@@ -55,11 +56,21 @@ public class MQuestScript extends Script {
     public static List<ItemRequirement> itemsMissing = new ArrayList<>();
     public static List<ItemRequirement> grandExchangeItems = new ArrayList<>();
 
+    /**
+     * Once all required items are obtained and withdrawn this flag is set to
+     * avoid repeatedly re-checking requirements each game tick. It will be
+     * reset when the script shuts down or is restarted.
+     */
+    private static boolean requirementsChecked = false;
+
     boolean unreachableTarget = false;
     int unreachableTargetCheckDist = 1;
 
     private MQuestConfig config;
     private MQuestPlugin mQuestPlugin;
+
+    private boolean lastAutoBuy = true;
+    private boolean lastBuyNow = false;
     private static ArrayList<Rs2NpcModel> npcsHandled = new ArrayList<>();
     private static ArrayList<TileObject> objectsHandeled = new ArrayList<>();
 
@@ -70,6 +81,8 @@ public class MQuestScript extends Script {
     public boolean run(MQuestConfig config, MQuestPlugin mQuestPlugin) {
         this.config = config;
         this.mQuestPlugin = mQuestPlugin;
+        this.lastAutoBuy = config.autoBuyItems();
+        this.lastBuyNow = config.buyItemsNow();
 
 
         mainScheduledFuture = scheduledExecutorService.scheduleWithFixedDelay(() -> {
@@ -83,8 +96,29 @@ public class MQuestScript extends Script {
 
                 QuestStep questStep = getQuestHelperPlugin().getSelectedQuest().getCurrentStep().getActiveStep();
 
-                if (!processItemRequirements())
-                    return;
+                boolean autoBuy = config.autoBuyItems();
+                boolean buyNow = config.buyItemsNow();
+                Microbot.log("Config autoBuy=" + autoBuy + ", buyNow=" + buyNow + ", checked=" + requirementsChecked);
+
+                if (buyNow && requirementsChecked) {
+                    Microbot.log("Buy-now toggled; resetting requirement check");
+                    requirementsChecked = false;
+                } else if (autoBuy != lastAutoBuy && autoBuy) {
+                    Microbot.log("Auto-buy enabled; resetting requirement check");
+                    requirementsChecked = false;
+                }
+                lastAutoBuy = autoBuy;
+                lastBuyNow = buyNow;
+
+                if (!requirementsChecked) {
+                    if (autoBuy || buyNow) {
+                        if (!processItemRequirements())
+                            return;
+                    } else {
+                        Microbot.log("Skipping requirement check - auto buy disabled and buy now not set");
+                    }
+                    requirementsChecked = true;
+                }
 
                 if (Rs2Dialogue.isInDialogue() && dialogueStartedStep == null)
                     dialogueStartedStep = questStep;
@@ -150,7 +184,7 @@ public class MQuestScript extends Script {
                 }
 
                 if (getQuestHelperPlugin().getSelectedQuest() != null && !Microbot.getClientThread().runOnClientThreadOptional(() ->
-                        getQuestHelperPlugin().getSelectedQuest().isCompleted()).orElse(null)) {
+                        getQuestHelperPlugin().getSelectedQuest().isCompleted()).orElse(false)) {
                     if (Rs2Widget.isWidgetVisible(ComponentID.DIALOG_OPTION_OPTIONS) && getQuestHelperPlugin().getSelectedQuest().getQuest().getId() != Quest.COOKS_ASSISTANT.getId() && !Rs2Bank.isOpen()) {
                         boolean hasOption = Rs2Dialogue.handleQuestOptionDialogueSelection();
                         //if there is no quest option in the dialogue, just click player location to remove
@@ -237,6 +271,168 @@ public class MQuestScript extends Script {
         return true;
     }
 
+    private List<Integer> getAllPossibleIds(ItemRequirement req) {
+        List<Integer> ids = new ArrayList<>(req.getAllIds());
+        for (int id : req.getAllIds()) {
+            ItemComposition comp = Microbot.getClientThread().runOnClientThreadOptional(() ->
+                    Microbot.getItemManager().getItemComposition(id)).orElse(null);
+            if (comp != null && comp.getNote() != -1 && comp.getNote() != id && !ids.contains(comp.getNote())) {
+                ids.add(comp.getNote());
+            }
+        }
+        return ids;
+    }
+
+    // Returns the noted ID of an item, or -1 if not found
+    private int getNotedId(int unnotedId) {
+        ItemComposition comp = Microbot.getClientThread().runOnClientThreadOptional(() ->
+                Microbot.getItemManager().getItemComposition(unnotedId)).orElse(null);
+        if (comp != null && comp.getNote() == -1) { // unnoted item
+            int linked = comp.getLinkedNoteId();
+            if (linked > 0 && linked != unnotedId) {
+                return linked;
+            }
+        }
+        return -1;
+    }
+
+    // Returns the unnoted ID of a noted item
+    private int getUnnotedId(int notedId) {
+        ItemComposition comp = Microbot.getClientThread().runOnClientThreadOptional(() ->
+                Microbot.getItemManager().getItemComposition(notedId)).orElse(null);
+        if (comp != null && comp.getNote() == 799) { // noted item
+            int linked = comp.getLinkedNoteId();
+            if (linked > 0 && linked != notedId) {
+                return linked;
+            }
+        }
+        return -1;
+    }
+
+
+    private void waitUntilInventoryCount(int itemId, int target, int timeoutMs) {
+        int waited = 0;
+        int poll = 200;
+        while (waited < timeoutMs) {
+            if (Rs2Inventory.itemQuantity(itemId) >= target) {
+                return;
+            }
+            sleep(poll);
+            waited += poll;
+        }
+        Microbot.log("Timeout waiting for inventory count of " + getItemName(itemId));
+    }
+
+    /**
+     * Count how many of the unnoted form of the requirement we have in the inventory.
+     * Noted items do not satisfy steps directly, so they are ignored here.
+     */
+    /**
+     * Count unnoted quantity of the requirement in the player inventory.
+     */
+    private int countInventory(ItemRequirement req) {
+        return Rs2Inventory.itemQuantity(req.getId());
+    }
+
+    /**
+     * Count both noted and unnoted forms of the requirement in the inventory.
+     * Useful for determining whether we own enough items overall.
+     */
+    private int countInventoryAll(ItemRequirement req) {
+        int count = 0;
+        for (int id : getAllPossibleIds(req))
+        {
+            count += Rs2Inventory.itemQuantity(id);
+        }
+        return count;
+    }
+
+    private int countBank(ItemRequirement req) {
+        int count = 0;
+        for (int id : getAllPossibleIds(req))
+        {
+            count += Rs2Bank.count(id);
+        }
+        return count;
+    }
+
+    /**
+     * Count quantity owned across both inventory and bank (noted and unnoted).
+     */
+    private int countOwned(ItemRequirement req)
+    {
+        int count = 0;
+        for (int id : getAllPossibleIds(req))
+        {
+            count += Rs2Inventory.itemQuantity(id);
+            count += Rs2Bank.count(id);
+        }
+        return count;
+    }
+
+    private boolean unnoteIfNecessary(List<ItemRequirement> requirements) {
+        for (ItemRequirement req : requirements) {
+            int invCount = countInventory(req);
+            int needed = req.getQuantity() - invCount;
+            if (needed <= 0) continue;
+
+            Microbot.log("Need to withdraw " + needed + " x " + getItemName(req.getId()));
+
+            int unnotedId = req.getId();
+            int notedId = getNotedId(unnotedId);
+            boolean hasBank = Rs2Bank.count(unnotedId) > 0 || (notedId != -1 && Rs2Bank.count(notedId) > 0);
+            boolean hasNotedInv = notedId != -1 && Rs2Inventory.itemQuantity(notedId) > 0;
+
+            if (hasBank || hasNotedInv) {
+                if (!Rs2Bank.isOpen()) {
+                    Rs2Bank.openBank();
+                    Microbot.log("Opened bank to withdraw " + getItemName(unnotedId));
+                    return false;
+                }
+            if (hasNotedInv) {
+                Rs2Bank.depositAll(notedId);
+                Microbot.log("Deposited noted items before unnoting: " + getItemName(notedId));
+            }
+
+            Rs2Bank.setWithdrawAsItem();
+            int bankUnnoted = Rs2Bank.count(unnotedId);
+            int withdrawUnnoted = Math.min(bankUnnoted, needed);
+            if (withdrawUnnoted > 0) {
+                Rs2Bank.withdrawX(true, unnotedId, withdrawUnnoted);
+                needed -= withdrawUnnoted;
+                Microbot.log("Withdrew " + withdrawUnnoted + " x " + getItemName(unnotedId));
+            }
+            if (needed > 0 && notedId != -1 && Rs2Bank.count(notedId) > 0) {
+                Rs2Bank.withdrawX(true, notedId, needed);
+                Microbot.log("Withdrew noted " + needed + " x " + getItemName(notedId));
+            }
+
+            Microbot.log("Withdrawing required items " + getItemName(unnotedId));
+            Microbot.status = "Withdrawing items";
+            waitUntilInventoryCount(unnotedId, req.getQuantity(), 5_000);
+            Microbot.log("Inventory now has " + Rs2Inventory.itemQuantity(unnotedId) + " x " + getItemName(unnotedId));
+            return false;
+            }
+            else {
+                Microbot.log("Requirement not found in bank: " + getItemName(unnotedId));
+            }
+        }
+
+        if (Rs2Bank.isOpen()) {
+            Rs2Bank.closeBank();
+        }
+        Microbot.log("Finished withdrawing required items");
+        return true;
+    }
+
+
+
+    private boolean isTradeable(int id) {
+        ItemComposition comp = Microbot.getClientThread().runOnClientThreadOptional(() ->
+                Microbot.getItemManager().getItemComposition(id)).orElse(null);
+        return comp != null && comp.isTradeable();
+    }
+
     private boolean handleRequirements(DetailedQuestStep questStep) {
         var requirements = questStep.getRequirements();
 
@@ -265,16 +461,58 @@ public class MQuestScript extends Script {
         itemsMissing = new ArrayList<>();
         itemRequirements = new ArrayList<>();
         grandExchangeItems = new ArrayList<>();
+        // allow requirement processing again on next run
+        requirementsChecked = false;
+        Microbot.log("Quest script reset; requirement check cleared");
     }
+    private boolean waitUntilItemBought(ItemRequirement req, int timeoutMs) {
+        int waited = 0;
+        int poll = 200;
+        while (waited < timeoutMs) {
+            for (int id : getAllPossibleIds(req)) {
+                if (Rs2Inventory.itemQuantity(id) >= req.getQuantity()) return true;
+            }
+            sleep(poll);
+            waited += poll;
+        }
+        return false;
+    }
+
+
+    private boolean isBuyableRequirement(ItemRequirement req) {
+        int id = req.getId();
+        String geName = getItemName(id);
+        String rawName = req.getName();
+        // ID check
+        if (id <= 0) return false;
+        // Name "junk" check
+        if (geName == null || geName.equalsIgnoreCase("null") || geName.equals(String.valueOf(-1))) return false;
+        if (rawName == null) return false;
+        String nameLower = rawName.toLowerCase();
+        if (nameLower.contains("combat gear") || nameLower.contains("food") ||
+                nameLower.contains("weapon") || nameLower.contains("armor") || nameLower.contains("armour")) {
+            return false;
+        }
+        // Tradeable check
+        ItemComposition itemComp = Microbot.getClientThread()
+                .runOnClientThreadOptional(() -> Microbot.getItemManager().getItemComposition(id)).orElse(null);
+        if (itemComp == null) return false;
+        if (!itemComp.isTradeable()) return false;
+        // If it passed all checks, it’s a buyable item.
+        return true;
+    }
+
+
 
     private boolean processItemRequirements()
     {
+        Microbot.status = "Processing Item Requirements";
+        Microbot.log("Processing item requirements");
         var questHelper = getQuestHelperPlugin().getSelectedQuest();
         if (questHelper == null)
-        {
             return true;
-        }
 
+        // Step 1: Load requirements only once
         if (itemRequirements.isEmpty())
         {
             var map = getQuestHelperPlugin().getItemRequirements();
@@ -288,78 +526,155 @@ public class MQuestScript extends Script {
                 }
             }
         }
-
         if (itemRequirements.isEmpty())
-        {
             return true;
+
+        // Step 2: Check inventory/bank status
+        if (Rs2Bank.bankItems().isEmpty() && !Rs2Bank.isOpen()) {
+            Microbot.log("Opening bank to refresh items");
+            Rs2Bank.openBank();
+            sleepUntil(Rs2Bank::isOpen, 5000);
+            Rs2Bank.closeBank();
         }
 
         itemsMissing.clear();
+        boolean needsWithdraw = false;
         for (ItemRequirement req : itemRequirements)
         {
-            Integer[] ids = req.getAllIds().toArray(new Integer[0]);
-            if (!Rs2Inventory.contains(ids))
+            int owned = countOwned(req);
+            int invUnnoted = countInventory(req);
+
+            Microbot.log("Requirement check " + getItemName(req.getId()) +
+                    " inv=" + invUnnoted + " owned=" + owned + " needed=" + req.getQuantity());
+
+            if (owned >= req.getQuantity())
+            {
+                if (invUnnoted < req.getQuantity())
+                {
+                    needsWithdraw = true;
+                }
+            }
+            else
             {
                 itemsMissing.add(req);
             }
         }
 
-        if (itemsMissing.isEmpty())
+        if (!itemsMissing.isEmpty())
         {
-            return true;
+            String missingNames = itemsMissing.stream()
+                    .map(r -> getItemName(r.getId()))
+                    .collect(Collectors.joining(", "));
+            Microbot.log("Missing items: " + missingNames);
+            Microbot.status = "Missing: " + missingNames;
+        }
+        else
+        {
+            Microbot.log("All quest items accounted for (may require withdrawal)");
+            Microbot.status = "All items accounted for";
         }
 
-        for (ItemRequirement req : new ArrayList<>(itemsMissing))
-        {
-            int[] ids = req.getAllIds().stream().mapToInt(Integer::intValue).toArray();
-            if (Rs2Bank.hasItem(ids))
+        // Step 3: Determine which items need to be purchased from the GE
+        grandExchangeItems.clear();
+        QuestState questState = questHelper.getQuest().getState(Microbot.getClient());
+        Microbot.log("Quest state: " + questState);
+        boolean allowGE = (questState == QuestState.NOT_STARTED && config.autoBuyItems()) || config.buyItemsNow();
+        if (!allowGE) {
+            Microbot.log("GE buying skipped - quest already started or disabled");
+        }
+        for (ItemRequirement req : itemsMissing) {
+            if (!isBuyableRequirement(req)) {
+                Microbot.log("Skipping GE buy for missing requirement: Name=" + req.getName()
+                        + ", ID=" + req.getId()
+                        + ", GE Name=" + getItemName(req.getId()));
+                continue;
+            }
+            if (allowGE)
             {
-                if (!Rs2Bank.isOpen())
-                {
-                    Rs2Bank.openBank();
-                    return false;
-                }
-
-                Rs2Bank.withdrawItem(true, ids[0]);
-                Microbot.log("Withdrawing required item " + getItemName(ids[0]));
-                itemsMissing.remove(req);
+                grandExchangeItems.add(req);
             }
         }
 
-        if (!itemsMissing.isEmpty())
-        {
-            grandExchangeItems.clear();
-            grandExchangeItems.addAll(itemsMissing);
-            buyMissingItems();
-            return false;
+        if (!grandExchangeItems.isEmpty()) {
+            for (ItemRequirement req : grandExchangeItems) {
+                Microbot.log("BEFORE BUY MISSING [DEBUG] Missing item: Name=" + req.getName() +
+                        ", ID=" + req.getId() +
+                        ", GE Name=" + getItemName(req.getId()));
+            }
+            if (!buyMissingItems()) {
+                return false;
+            }
+            needsWithdraw = true;
         }
+
+        // Step 4: Withdraw all required items (after GE purchases were made)
+        if (needsWithdraw) {
+            Microbot.log("Withdrawing items from bank after GE");
+            if (!unnoteIfNecessary(itemRequirements)) {
+                return false;
+            }
+        }
+
+        // Step 5: Final check — ensure items are in inventory
+        itemsMissing.clear();
+        for (ItemRequirement req : itemRequirements)
+        {
+            if (countInventory(req) < req.getQuantity())
+            {
+                itemsMissing.add(req);
+            }
+        }
+        if (!itemsMissing.isEmpty()) {
+            Microbot.log("Still missing items after GE/unnoting: " +
+                    itemsMissing.stream().map(r -> getItemName(r.getId())).collect(Collectors.joining(", ")));
+            return false; // or you could choose to throw, halt, or handle differently
+        }
+
+        Microbot.log("All required items present in inventory");
 
         return true;
     }
 
-    private void buyMissingItems()
+    private boolean isGEReadyForBuy() {
+        // Defensive check: If the search text widget is present and not a price, don't buy.
+        Microbot.status = "Checking if GE is ready to use!";
+        try {
+            // You'll need to adjust the widget group/child ID if your GE layout is nonstandard!
+            Widget searchWidget = Microbot.getClient().getWidget(465, 24); // 465=GE buy screen group, 24=search text
+            if (searchWidget != null && searchWidget.getText() != null) {
+                String text = searchWidget.getText();
+                if (text.contains("Click the icon") || text.matches(".*[a-zA-Z]+.*")) {
+                    return false; // Contains letters, not a price
+                }
+            }
+        } catch (Exception ignored) { }
+        return true;
+    }
+    private boolean buyMissingItems()
     {
-        if (grandExchangeItems.isEmpty())
-        {
-            return;
+        Microbot.status = "Buying Items";
+
+        if (grandExchangeItems.isEmpty()) {
+            return true;
         }
 
-        if (!Rs2GrandExchange.isOpen())
-        {
-            Rs2GrandExchange.openExchange();
-            return;
+        Microbot.log("buyMissingItems called with " + grandExchangeItems.size() + " items");
+        Microbot.log("Walking to GE for purchases");
+        Rs2Walker.walkTo(new WorldPoint(3164, 3485, 0));
+
+        boolean result = GEHelper.buyRequirements(grandExchangeItems);
+        Microbot.log("buyMissingItems result=" + result);
+        if (!result) {
+            return false;
         }
 
-        for (ItemRequirement req : grandExchangeItems)
-        {
-            String name = getItemName(req.getId());
-            Microbot.log("Attempting to buy " + name);
-            Rs2GrandExchange.buyItemAbove5Percent(name, req.getQuantity());
-        }
+        Microbot.log("GE purchases completed");
 
-        Rs2GrandExchange.collectToBank();
-        Microbot.log("Finished buying missing quest items");
+        Microbot.getConfigManager().setConfiguration("quest", "buyItemsNow", false);
+
         grandExchangeItems.clear();
+        Microbot.status = "Finished buying. Resuming Questing";
+        return true;
     }
 
     private String getItemName(int id)
@@ -691,3 +1006,4 @@ public class MQuestScript extends Script {
             unreachableTarget = true;
     }
 }
+
