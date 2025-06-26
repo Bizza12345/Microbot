@@ -191,6 +191,10 @@ public class Rs2GrandExchange {
     private static void setQuantity(int quantity) {
         if (quantity != getOfferQuantity()) {
             Widget quantityButtonX = getQuantityButton_X();
+            if (quantityButtonX == null) {
+                Microbot.log("GE quantity button not found");
+                return;
+            }
             Microbot.getMouse().click(quantityButtonX.getBounds());
             sleepUntil(() -> Rs2Widget.getWidget(InterfaceID.Chatbox.MES_TEXT2) != null); //GE Enter Price/Quantity
             sleep(600, 1000);
@@ -203,6 +207,10 @@ public class Rs2GrandExchange {
     private static void setPrice(int price) {
         if (price != getOfferPrice()) {
             Widget pricePerItemButtonX = getPricePerItemButton_X();
+            if (pricePerItemButtonX == null) {
+                Microbot.log("GE price button not found");
+                return;
+            }
             Microbot.getMouse().click(pricePerItemButtonX.getBounds());
             sleepUntil(() -> Rs2Widget.getWidget(InterfaceID.Chatbox.MES_TEXT2) != null); //GE Enter Price
             sleep(600, 1000);
@@ -714,7 +722,11 @@ public class Rs2GrandExchange {
     }
 
     public static int getItemPrice() {
-        return Integer.parseInt(Rs2Widget.getWidget(465, 27).getText().replace(" coins", ""));
+        String text = Optional.ofNullable(Rs2Widget.getWidget(465, 27))
+                .map(Widget::getText)
+                .orElse("");
+        int value = NumberExtractor.extractNumber(text);
+        return value == -1 ? 0 : value;
     }
 
     public static Widget getSlot(GrandExchangeSlots slot) {
@@ -741,8 +753,13 @@ public class Rs2GrandExchange {
     }
 
     public static boolean isSlotAvailable(GrandExchangeSlots slot) {
+        if (slot == null) {
+            return false;
+        }
         Widget parent = getSlot(slot);
-        return Optional.ofNullable(parent).map(p -> p.getChild(2).isSelfHidden()).orElse(false);
+        return Optional.ofNullable(parent)
+                .map(p -> p.getChild(2).isSelfHidden())
+                .orElse(false);
     }
 
     public static Widget getOfferBuyButton(GrandExchangeSlots slot) {
