@@ -13,4 +13,19 @@ import net.runelite.client.config.ConfigInformation;
         "<b>Important: </b> <br/>" +
         "MQuester will <b>NOT</b> fetch items from your bank or buy them from the Grand Exchange. Make sure you have all required quest items ready before you start.")
 public interface MQuestConfig extends Config {
+    @ConfigItem(
+            keyName = "autoBuyItems",
+            name = "Auto buy items",
+            description = "Automatically buy missing quest items from the GE when the quest is not started.",
+            position = 0
+    )
+    default boolean autoBuyItems() { return true; }
+
+    @ConfigItem(
+            keyName = "buyItemsNow",
+            name = "Buy items now",
+            description = "Buy missing quest items from the GE immediately.",
+            position = 1
+    )
+    default boolean buyItemsNow() { return false; }
 }
