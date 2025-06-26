@@ -15,6 +15,14 @@ public class PieScript extends Script {
     public static double version = 1.2;
     public static int totalPieShellsMade = 0;
 
+    private enum State {
+        MAKING_SHELLS,
+        SELLING_SHELLS,
+        BUYING_SUPPLIES
+    }
+
+    private State state = State.MAKING_SHELLS;
+
     private IngredientPrices ingredientPrices;
     private PieConfig config;
 
@@ -32,20 +40,28 @@ public class PieScript extends Script {
                     Microbot.log("PieScript.run() - Client not logged in");
                     return;
                 }
-                if (Rs2Inventory.count("pie dish") > 0 && (Rs2Inventory.count("pastry dough") > 0)) {
-                    Microbot.status = "Combining pie dish with pastry dough";
-                    Microbot.log("PieScript.run() - Combining pie dishes with pastry dough");
-                    Rs2Inventory.combine("pie dish", "pastry dough");
-                    sleepUntilOnClientThread(() -> Rs2Widget.getWidget(17694734) != null);
-                    keyPress('1');
-                    sleepUntilOnClientThread(() -> !Rs2Inventory.hasItem("pie dish"),25000);
 
-                    totalPieShellsMade += 14;   // rough example, but you get the point
-                    Microbot.log("PieScript.run() - Completed making pie shells. Total so far: " + totalPieShellsMade);
-                    return;
-                } else {
-                    Microbot.log("PieScript.run() - Inventory missing items, banking");
-                    bank();
+                switch (state) {
+                    case MAKING_SHELLS:
+                        if (Rs2Inventory.count("pie dish") > 0 && Rs2Inventory.count("pastry dough") > 0) {
+                            Microbot.status = "Combining pie dish with pastry dough";
+                            Microbot.log("PieScript.run() - Combining pie dishes with pastry dough");
+                            Rs2Inventory.combine("pie dish", "pastry dough");
+                            sleepUntilOnClientThread(() -> Rs2Widget.getWidget(17694734) != null);
+                            keyPress('1');
+                            sleepUntilOnClientThread(() -> !Rs2Inventory.hasItem("pie dish"), 25000);
+
+                            totalPieShellsMade += 14;   // rough example, but you get the point
+                            Microbot.log("PieScript.run() - Completed making pie shells. Total so far: " + totalPieShellsMade);
+                        } else {
+                            Microbot.log("PieScript.run() - Inventory missing items, banking");
+                            bank();
+                        }
+                        break;
+                    case SELLING_SHELLS:
+                    case BUYING_SUPPLIES:
+                        handleGrandExchange();
+                        break;
                 }
             } catch (Exception ex) {
                 Microbot.logStackTrace(this.getClass().getSimpleName(), ex);
@@ -62,8 +78,11 @@ public class PieScript extends Script {
             Microbot.log("PieScript.bank() - Bank opened");
             Rs2Bank.depositAll();
 
-            if (config.enableGEBuying()) {
-                handleGrandExchange();
+            if (Rs2Bank.hasItem("pie shell")) {
+                state = State.SELLING_SHELLS;
+                Rs2Bank.closeBank();
+                sleepUntilOnClientThread(() -> !Rs2Bank.isOpen());
+                return;
             }
 
             if (Rs2Bank.hasItem("pie dish") && Rs2Bank.hasItem("pastry dough")) {
@@ -74,7 +93,9 @@ public class PieScript extends Script {
                 sleepUntilOnClientThread(() -> Rs2Inventory.hasItem("pastry dough"));
             } else {
                 Microbot.log("PieScript.bank() - Out of materials");
-                if (!config.enableGEBuying()) {
+                if (config.enableGEBuying()) {
+                    state = State.BUYING_SUPPLIES;
+                } else {
                     Microbot.getNotifier().notify("Run out of Materials");
                     shutdown();
                 }
@@ -132,5 +153,6 @@ public class PieScript extends Script {
         Rs2GrandExchange.closeExchange();
         Rs2Bank.walkToBank();
         Rs2Bank.openBank();
+        state = State.MAKING_SHELLS;
     }
 }
