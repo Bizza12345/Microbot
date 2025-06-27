@@ -85,12 +85,16 @@ public class PieScript extends Script {
                 return;
             }
 
-            if (Rs2Bank.hasItem("pie dish") && Rs2Bank.hasItem("pastry dough")) {
-                Microbot.log("PieScript.bank() - Withdrawing materials");
-                Rs2Bank.withdrawX(true, "pie dish", 14);
-                sleepUntilOnClientThread(() -> Rs2Inventory.hasItem("pie dish"));
-                Rs2Bank.withdrawX(true, "pastry dough", 14);
-                sleepUntilOnClientThread(() -> Rs2Inventory.hasItem("pastry dough"));
+            int dishCount = Rs2Bank.count("pie dish");
+            int doughCount = Rs2Bank.count("pastry dough");
+            if (dishCount > 0 && doughCount > 0) {
+                int amount = Math.min(14, Math.min(dishCount, doughCount));
+                Microbot.log("PieScript.bank() - Withdrawing materials (" + amount + ")");
+                Rs2Bank.withdrawX(true, "pie dish", amount);
+                int finalAmount = amount;
+                sleepUntilOnClientThread(() -> Rs2Inventory.itemQuantity("pie dish") >= finalAmount);
+                Rs2Bank.withdrawX(true, "pastry dough", amount);
+                sleepUntilOnClientThread(() -> Rs2Inventory.itemQuantity("pastry dough") >= finalAmount);
             } else {
                 Microbot.log("PieScript.bank() - Out of materials");
                 if (config.enableGEBuying()) {
