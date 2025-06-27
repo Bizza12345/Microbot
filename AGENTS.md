@@ -43,10 +43,12 @@ the build.
 These steps let Codex build the project in future prompts without reaching external repositories.
 
 ## Useful paths
+- All API .MD Docs `docs/api` - Search here first for relevant information when crafting scripts.
 - Microbot scripts: `runelite-client/src/main/java/net/runelite/client/plugins/microbot`
 - Microbot utilities: `runelite-client/src/main/java/net/runelite/client/plugins/microbot/util`
 - RuneLite API sources: `runelite-api/src/main/java/net/runelite/api`
 - Runelite Items API: `runelite-api/src/main/java/net/runelite/api/gameval/ItemID.java`
+- Rs2Keyboard API: `/docs/api/Rs2Keyboard.md`
 - RuneLite plugins: `runelite-client/src/main/java/net/runelite/client/plugins`
 - Build output: `runelite-client/target` after running Maven
 - Example script: `runelite-client/src/main/java/net/runelite/client/plugins/microbot/example`
