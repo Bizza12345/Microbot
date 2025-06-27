@@ -24,10 +24,13 @@ public class TannerScript extends Script {
 
     public static double version = 1.0;
 
-    WorldPoint tannerLocation = new WorldPoint(3276, 3192, 0);
+    private final WorldPoint tannerLocation = new WorldPoint(3276, 3192, 0);
 
     private final AtomicBoolean interactThreadRunning = new AtomicBoolean(false);
 
+    /**
+     * Continuously attempt to trade with Ellis until the tanning interface appears
+     */
     private void startInteractionThread() {
         if (interactThreadRunning.get()) {
             return;
@@ -42,14 +45,13 @@ public class TannerScript extends Script {
                         Microbot.log("Watcher: clicking trade on Ellis");
                         Rs2Npc.interact(ellis, "trade");
                     }
-                }, 10000, 200);
+                }, 12000, 200);
             } finally {
                 interactThreadRunning.set(false);
             }
             return true;
         });
     }
-
 
     public boolean run(TannerConfig config) {
         Microbot.log("Starting Tanner script");
@@ -76,14 +78,17 @@ public class TannerScript extends Script {
         boolean hasMoney = Rs2Inventory.hasItem(995);
         boolean hasStamina = Rs2Inventory.hasItem("stamina");
         NPC tanner = Rs2Npc.getNpc(NpcID.ELLIS);
-        boolean isTannerVisibleOnScreen = tanner != null && Rs2Camera.isTileOnScreen(tanner.getLocalLocation());
-        boolean isBankVisible = Microbot.getClient().getLocalPlayer().getWorldLocation().distanceTo(BankLocation.AL_KHARID.getWorldPoint()) < 5;
+        boolean tannerVisible = tanner != null && Rs2Camera.isTileOnScreen(tanner.getLocalLocation());
+        boolean bankVisible = Microbot.getClient().getLocalPlayer().getWorldLocation().distanceTo(BankLocation.AL_KHARID.getWorldPoint()) < 5;
         boolean hasRunEnergy = Microbot.getClient().getEnergy() > 4000;
+
         Microbot.log("hasHides=" + hasHides + ", hasMoney=" + hasMoney + ", staminaInInv=" + hasStamina);
-        Microbot.log("tannerVisible=" + isTannerVisibleOnScreen + ", bankVisible=" + isBankVisible);
+        Microbot.log("tannerVisible=" + tannerVisible + ", bankVisible=" + bankVisible);
         Microbot.log("runEnergy=" + hasRunEnergy);
+
         if (hasRunEnergy) Rs2Player.toggleRunEnergy(true);
-        if (isBankVisible) {
+
+        if (bankVisible) {
             if ((!hasRunEnergy && !hasStamina) || !hasMoney || !hasHides) {
                 Microbot.status = "Opening bank";
                 Microbot.log("Opening bank");
@@ -96,7 +101,7 @@ public class TannerScript extends Script {
 
                 if (!hasMoney) {
                     Microbot.log("Withdrawing coins");
-                    Rs2Bank.withdrawAll(false,"Coins");
+                    Rs2Bank.withdrawAll(false, "Coins");
                 }
 
                 if (!hasHides || !hasRunEnergy) {
@@ -105,7 +110,7 @@ public class TannerScript extends Script {
                     Rs2Bank.depositAll("vial");
                     if (!hasRunEnergy && !hasStamina) {
                         Microbot.log("Withdrawing stamina potion");
-                        Rs2Bank.withdrawItem( "Stamina potion(4)");
+                        Rs2Bank.withdrawItem("Stamina potion(4)");
                     }
                     if (!Rs2Bank.hasItem(config.HIDE_TYPE().getItemName())) {
                         Rs2Bank.closeBank();
@@ -118,7 +123,8 @@ public class TannerScript extends Script {
                 }
             }
         }
-        if (hasHides && !isTannerVisibleOnScreen) {
+
+        if (hasHides && !tannerVisible) {
             Microbot.status = "Walking to Tanner";
             Microbot.log("Walking to tanner");
             Microbot.getClientThread().runOnSeperateThread(() -> {
@@ -128,25 +134,27 @@ public class TannerScript extends Script {
             startInteractionThread();
         }
 
-        if (hasHides && isTannerVisibleOnScreen) {
-            if (!Rs2Widget.hasWidget("What hides would you like tanning?")) {
-                Microbot.status = "Interacting";
-                Microbot.log("Attempting to interact with Ellis");
-                startInteractionThread();
-            }
-
+        if (hasHides && tannerVisible) {
             if (Rs2Widget.hasWidget("What hides would you like tanning?")) {
-                Widget widget = Rs2Widget.findWidget((config.HIDE_TYPE().getWidgetName()));
+                Widget widget = Rs2Widget.findWidget(config.HIDE_TYPE().getWidgetName());
                 if (widget != null) {
-                    // TODO: needs to be reworked to specificy all option
+                    Microbot.log("Selecting hide option " + config.HIDE_TYPE().getWidgetName());
+                    // TODO: needs to be reworked to specify all option
                     Microbot.showMessage("needs to be reworked to specificy all option");
                     //Rs2Widget.clickWidget(widget.getId(), "all");
                     sleepUntil(() -> Rs2Inventory.hasItem(config.HIDE_TYPE().getItemName()));
                 }
+            } else {
+                Microbot.status = "Interacting";
+                Microbot.log("Attempting to trade with Ellis");
+                if (Rs2Npc.interact(NpcID.ELLIS, "trade")) {
+                    sleepUntil(() -> Rs2Widget.hasWidget("What hides would you like tanning?"));
+                }
+                startInteractionThread();
             }
         }
 
-        if (!hasHides && !isBankVisible) {
+        if (!hasHides && !bankVisible) {
             Microbot.status = "Walking to Bank";
             Microbot.log("Walking to bank");
             Rs2Walker.walkTo(BankLocation.AL_KHARID.getWorldPoint());
