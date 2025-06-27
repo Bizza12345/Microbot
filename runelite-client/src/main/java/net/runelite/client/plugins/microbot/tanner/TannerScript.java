@@ -109,7 +109,7 @@ public class TannerScript extends Script {
             hideTypes = Collections.singletonList(config.HIDE_TYPE());
         }
         HideType activeHide = hideTypes.stream()
-                .filter(h -> Rs2Inventory.hasItem(h.getItemName()))
+                .filter(h -> Rs2Inventory.hasItem(h.getItemName()) || Rs2Inventory.hasItem(h.getName()))
                 .findFirst()
                 .orElse(hideTypes.get(0));
 
