@@ -10,6 +10,8 @@ import net.runelite.api.events.ItemContainerChanged;
 import net.runelite.api.gameval.VarbitID;
 import net.runelite.api.widgets.ComponentID;
 import net.runelite.api.widgets.Widget;
+import net.runelite.api.widgets.WidgetInfo;
+import net.runelite.api.gameval.InterfaceID;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.config.RuneScapeProfileType;
 import net.runelite.client.plugins.bank.BankPlugin;
@@ -37,6 +39,8 @@ import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 import net.runelite.client.plugins.microbot.util.security.Encryption;
 import net.runelite.client.plugins.microbot.util.security.Login;
 import net.runelite.client.plugins.microbot.util.settings.Rs2Settings;
+import net.runelite.client.plugins.microbot.globval.VarbitIndices;
+import net.runelite.client.plugins.microbot.globval.VarbitValues;
 import net.runelite.client.plugins.microbot.util.tile.Rs2Tile;
 import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
 import net.runelite.client.plugins.microbot.util.widget.Rs2Widget;
@@ -694,7 +698,22 @@ public class Rs2Bank {
         if (Rs2Inventory.isEmpty()) return;
         if (!Rs2Bank.isOpen()) return;
 
-        Widget widget = Rs2Widget.findWidget(SpriteID.BANK_DEPOSIT_INVENTORY, null);
+        // Ensure the deposit inventory button is visible
+        if (Microbot.getVarbitValue(VarbitIndices.TOGGLE_BANK_DEPOSIT_INVENTORY) ==
+            VarbitValues.BANK_DEPOSIT_INVENTORY_HIDDEN.getValue()) {
+            Widget toggle = Rs2Widget.getWidget(InterfaceID.Bankmain.DEPOSITINV_TOGGLE);
+            if (toggle != null) {
+                Rs2Widget.clickWidget(toggle);
+                sleepUntil(() -> Microbot.getVarbitValue(VarbitIndices.TOGGLE_BANK_DEPOSIT_INVENTORY) ==
+                    VarbitValues.BANK_DEPOSIT_INVENTORY_SHOWN.getValue(), 5000);
+            }
+        }
+
+        Widget widget = Rs2Widget.getWidget(WidgetInfo.BANK_DEPOSIT_INVENTORY.getId());
+        if (widget == null)
+        {
+            widget = Rs2Widget.findWidget(SpriteID.BANK_DEPOSIT_INVENTORY, null);
+        }
         if (widget == null) return;
 
         Rs2Widget.clickWidget(widget);

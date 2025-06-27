@@ -85,12 +85,16 @@ public class PieScript extends Script {
                 return;
             }
 
-            if (Rs2Bank.hasItem("pie dish") && Rs2Bank.hasItem("pastry dough")) {
-                Microbot.log("PieScript.bank() - Withdrawing materials");
-                Rs2Bank.withdrawX(true, "pie dish", 14);
-                sleepUntilOnClientThread(() -> Rs2Inventory.hasItem("pie dish"));
-                Rs2Bank.withdrawX(true, "pastry dough", 14);
-                sleepUntilOnClientThread(() -> Rs2Inventory.hasItem("pastry dough"));
+            int dishCount = Rs2Bank.count("pie dish");
+            int doughCount = Rs2Bank.count("pastry dough");
+            if (dishCount > 0 && doughCount > 0) {
+                int amount = Math.min(14, Math.min(dishCount, doughCount));
+                Microbot.log("PieScript.bank() - Withdrawing materials (" + amount + ")");
+                Rs2Bank.withdrawX(true, "pie dish", amount);
+                int finalAmount = amount;
+                sleepUntilOnClientThread(() -> Rs2Inventory.itemQuantity("pie dish") >= finalAmount);
+                Rs2Bank.withdrawX(true, "pastry dough", amount);
+                sleepUntilOnClientThread(() -> Rs2Inventory.itemQuantity("pastry dough") >= finalAmount);
             } else {
                 Microbot.log("PieScript.bank() - Out of materials");
                 if (config.enableGEBuying()) {
@@ -133,12 +137,6 @@ public class PieScript extends Script {
 
         int doughPrice = Rs2GrandExchange.getPrice(ItemID.PASTRY_DOUGH);
         int dishPrice = Rs2GrandExchange.getPrice(ItemID.PIE_DISH);
-        ingredientPrices = new IngredientPrices(doughPrice, dishPrice);
-
-        int setCost = doughPrice + dishPrice;
-        int setsAffordable = coins / setCost;
-        int quantity = Math.min(setsAffordable * 14, 196);
-        if (quantity <= 0) return;
 
         if (Rs2Bank.count(ItemID.COINS_995) > 0) {
             Rs2Bank.withdrawAll(ItemID.COINS_995);
@@ -147,8 +145,31 @@ public class PieScript extends Script {
 
         Rs2GrandExchange.walkToGrandExchange();
         Rs2GrandExchange.openExchange();
-        Rs2GrandExchange.buyItemAbove5Percent("pastry dough", quantity);
-        Rs2GrandExchange.buyItemAbove5Percent("pie dish", quantity);
+
+        // Purchase one of each item at +99% to discover the actively traded price
+        if (Rs2GrandExchange.buyItemAboveXPercent("pastry dough", 1, 99)) {
+            sleepUntilOnClientThread(Rs2GrandExchange::hasFinishedBuyingOffers);
+            doughPrice = Rs2GrandExchange.getLastBoughtPrice(ItemID.PASTRY_DOUGH);
+            Rs2GrandExchange.collectToBank();
+        }
+
+        if (Rs2GrandExchange.buyItemAboveXPercent("pie dish", 1, 99)) {
+            sleepUntilOnClientThread(Rs2GrandExchange::hasFinishedBuyingOffers);
+            dishPrice = Rs2GrandExchange.getLastBoughtPrice(ItemID.PIE_DISH);
+            Rs2GrandExchange.collectToBank();
+        }
+
+        ingredientPrices = new IngredientPrices(doughPrice, dishPrice);
+
+        // Update available coins after test purchases
+        coins = Rs2Inventory.count(ItemID.COINS_995) + Rs2Bank.count(ItemID.COINS_995);
+        int setCost = doughPrice + dishPrice;
+        int setsAffordable = coins / setCost;
+        int quantity = Math.min(setsAffordable * 14, 196) - 1; // subtract the test item
+        if (quantity <= 0) return;
+
+        Rs2GrandExchange.buyItem("pastry dough", doughPrice, quantity);
+        Rs2GrandExchange.buyItem("pie dish", dishPrice, quantity);
         Rs2GrandExchange.collectToBank();
         Rs2GrandExchange.closeExchange();
         Rs2Bank.walkToBank();
