@@ -2,10 +2,11 @@ package net.runelite.client.plugins.microbot.nateplugins.moneymaking.natepieshel
 
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.Script;
-import net.runelite.api.ItemID;
+import net.runelite.api.gameval.ItemID;
 import net.runelite.client.plugins.microbot.util.bank.Rs2Bank;
 import net.runelite.client.plugins.microbot.util.grandexchange.Rs2GrandExchange;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
+import net.runelite.client.plugins.microbot.util.keyboard.Rs2Keyboard;
 import net.runelite.client.plugins.microbot.util.widget.Rs2Widget;
 
 import java.util.concurrent.TimeUnit;
@@ -48,7 +49,7 @@ public class PieScript extends Script {
                             Microbot.log("PieScript.run() - Combining pie dishes with pastry dough");
                             Rs2Inventory.combine("pie dish", "pastry dough");
                             sleepUntilOnClientThread(() -> Rs2Widget.getWidget(17694734) != null);
-                            keyPress('1');
+                            Rs2Keyboard.keyPress('1');
                             sleepUntilOnClientThread(() -> !Rs2Inventory.hasItem("pie dish"), 25000);
 
                             totalPieShellsMade += 14;   // rough example, but you get the point
@@ -135,7 +136,7 @@ public class PieScript extends Script {
             Rs2Bank.depositAll();
         }
 
-        int coins = Rs2Inventory.count(ItemID.COINS_995) + Rs2Bank.count(ItemID.COINS_995);
+        int coins = Rs2Inventory.count("Coins") + Rs2Bank.count("Coins");
         Microbot.log("GE: Total coins available " + coins);
         if (coins <= 0) {
             Microbot.log("GE: No coins available, exiting GE handler");
@@ -143,15 +144,15 @@ public class PieScript extends Script {
         }
 
         int doughPrice = Rs2GrandExchange.getPrice(ItemID.PASTRY_DOUGH);
-        int dishPrice = Rs2GrandExchange.getPrice(ItemID.PIE_DISH);
+        int dishPrice = Rs2GrandExchange.getPrice(ItemID.PIEDISH);
 
         Microbot.log("GE: Initial prices - dough: " + doughPrice + " dish: " + dishPrice);
 
 
-        if (Rs2Bank.count(ItemID.COINS_995) > 0) {
+        if (Rs2Bank.count("Coins") > 0) {
             Microbot.log("GE: Withdrawing coins from bank");
-            Rs2Bank.withdrawAll(ItemID.COINS_995);
-            sleepUntilOnClientThread(() -> Rs2Inventory.count(ItemID.COINS_995) > 0);
+            Rs2Bank.withdrawAll("Coins");
+            sleepUntilOnClientThread(() -> Rs2Inventory.count("Coins") > 0);
         }
 
         Rs2GrandExchange.walkToGrandExchange();
@@ -170,7 +171,7 @@ public class PieScript extends Script {
         Microbot.log("GE: Buying one pie dish at +99% to determine price");
         if (Rs2GrandExchange.buyItemAboveXPercent("pie dish", 1, 99)) {
             sleepUntilOnClientThread(Rs2GrandExchange::hasFinishedBuyingOffers);
-            dishPrice = Rs2GrandExchange.getLastBoughtPrice(ItemID.PIE_DISH);
+            dishPrice = Rs2GrandExchange.getLastBoughtPrice(ItemID.PIEDISH);
             Microbot.log("GE: Determined dish price " + dishPrice);
 
             Rs2GrandExchange.collectToBank();
@@ -179,7 +180,7 @@ public class PieScript extends Script {
         ingredientPrices = new IngredientPrices(doughPrice, dishPrice);
 
         // Update available coins after test purchases
-        coins = Rs2Inventory.count(ItemID.COINS_995) + Rs2Bank.count(ItemID.COINS_995);
+        coins = Rs2Inventory.count(ItemID.COINS) + Rs2Bank.count("Coins");
         int setCost = doughPrice + dishPrice;
         int setsAffordable = coins / setCost;
         int quantity = Math.min(setsAffordable * 14, 196) - 1; // subtract the test item
