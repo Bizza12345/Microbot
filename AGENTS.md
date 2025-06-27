@@ -44,4 +44,4 @@ These steps let Codex build the project in future prompts without reaching exter
 The `docs/development.md` file contains additional guidance on creating scripts and shows code samples for common tasks.
 
 ## Current task
-- `current_task_path` - [Short description].
+- `runelite-client/src/main/java/net/runelite/client/plugins/microbot/tanner` - Improve tanner script with automatic NPC interaction and debug logs.
