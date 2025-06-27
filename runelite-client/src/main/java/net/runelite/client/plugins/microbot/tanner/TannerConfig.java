@@ -39,4 +39,16 @@ public interface TannerConfig extends Config {
         return HideType.LEATHER;
     }
 
+    @ConfigItem(
+            keyName = "HideList",
+            name = "Hide List",
+            description = "Comma separated list of hides to tan (e.g. LEATHER, GREEN)",
+            position = 2,
+            section = generalSection
+    )
+    default String HIDE_LIST()
+    {
+        return "LEATHER";
+    }
+
 }

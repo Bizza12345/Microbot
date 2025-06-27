@@ -7,6 +7,7 @@ import net.runelite.api.widgets.Widget;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.Script;
 import net.runelite.client.plugins.microbot.tanner.enums.Location;
+import net.runelite.client.plugins.microbot.tanner.enums.HideType;
 import net.runelite.client.plugins.microbot.util.bank.Rs2Bank;
 import net.runelite.client.plugins.microbot.util.bank.enums.BankLocation;
 import net.runelite.client.plugins.microbot.util.camera.Rs2Camera;
@@ -17,8 +18,10 @@ import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
 import net.runelite.client.plugins.microbot.util.widget.Rs2Widget;
 import net.runelite.client.plugins.microbot.util.Global;
 
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.stream.Collectors;
 
 public class TannerScript extends Script {
 
@@ -53,6 +56,23 @@ public class TannerScript extends Script {
         });
     }
 
+    private List<HideType> parseHideList(TannerConfig config) {
+        return Arrays.stream(config.HIDE_LIST().split(","))
+                .map(String::trim)
+                .filter(s -> !s.isEmpty())
+                .map(s -> s.toUpperCase().replace(' ', '_'))
+                .map(name -> {
+                    try {
+                        return HideType.valueOf(name);
+                    } catch (IllegalArgumentException ex) {
+                        Microbot.log("Invalid hide type in list: " + name);
+                        return null;
+                    }
+                })
+                .filter(Objects::nonNull)
+                .collect(Collectors.toList());
+    }
+
     public boolean run(TannerConfig config) {
         Microbot.log("Starting Tanner script");
         Microbot.status = "Starting";
@@ -74,7 +94,17 @@ public class TannerScript extends Script {
     public void tanInAlkharid(TannerConfig config) {
         Microbot.status = "Tanning";
         Microbot.log("Processing tanning routine");
-        boolean hasHides = Rs2Inventory.hasItem(config.HIDE_TYPE().getItemName());
+
+        List<HideType> hideTypes = parseHideList(config);
+        if (hideTypes.isEmpty()) {
+            hideTypes = Collections.singletonList(config.HIDE_TYPE());
+        }
+        HideType activeHide = hideTypes.stream()
+                .filter(h -> Rs2Inventory.hasItem(h.getItemName()))
+                .findFirst()
+                .orElse(hideTypes.get(0));
+
+        boolean hasHides = Rs2Inventory.hasItem(activeHide.getItemName());
         boolean hasMoney = Rs2Inventory.hasItem(995);
         boolean hasStamina = Rs2Inventory.hasItem("stamina");
         NPC tanner = Rs2Npc.getNpc(NpcID.ELLIS);
@@ -106,20 +136,20 @@ public class TannerScript extends Script {
 
                 if (!hasHides || !hasRunEnergy) {
                     Microbot.log("Depositing items");
-                    Rs2Bank.depositAll(config.HIDE_TYPE().getName());
+                    Rs2Bank.depositAll(activeHide.getName());
                     Rs2Bank.depositAll("vial");
                     if (!hasRunEnergy && !hasStamina) {
                         Microbot.log("Withdrawing stamina potion");
                         Rs2Bank.withdrawItem("Stamina potion(4)");
                     }
-                    if (!Rs2Bank.hasItem(config.HIDE_TYPE().getItemName())) {
+                    if (!Rs2Bank.hasItem(activeHide.getItemName())) {
                         Rs2Bank.closeBank();
                         Rs2Player.logout();
                         shutdown();
                         return;
                     }
                     Microbot.log("Withdrawing hides");
-                    Rs2Bank.withdrawAll(false, config.HIDE_TYPE().getItemName());
+                    Rs2Bank.withdrawAll(false, activeHide.getItemName());
                 }
             }
         }
@@ -136,13 +166,13 @@ public class TannerScript extends Script {
 
         if (hasHides && tannerVisible) {
             if (Rs2Widget.hasWidget("What hides would you like tanning?")) {
-                Widget widget = Rs2Widget.findWidget(config.HIDE_TYPE().getWidgetName());
+                Widget widget = Rs2Widget.findWidget(activeHide.getWidgetName());
                 if (widget != null) {
-                    Microbot.log("Selecting hide option " + config.HIDE_TYPE().getWidgetName());
+                    Microbot.log("Selecting hide option " + activeHide.getWidgetName());
                     // TODO: needs to be reworked to specify all option
                     Microbot.showMessage("needs to be reworked to specificy all option");
                     //Rs2Widget.clickWidget(widget.getId(), "all");
-                    sleepUntil(() -> Rs2Inventory.hasItem(config.HIDE_TYPE().getItemName()));
+                    sleepUntil(() -> Rs2Inventory.hasItem(activeHide.getItemName()));
                 }
             } else {
                 Microbot.status = "Interacting";
