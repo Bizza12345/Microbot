@@ -18,12 +18,37 @@ import net.runelite.client.plugins.microbot.util.widget.Rs2Widget;
 import net.runelite.client.plugins.microbot.util.Global;
 
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public class TannerScript extends Script {
 
     public static double version = 1.0;
 
     WorldPoint tannerLocation = new WorldPoint(3276, 3192, 0);
+
+    private final AtomicBoolean interactThreadRunning = new AtomicBoolean(false);
+
+    private void startInteractionThread() {
+        if (interactThreadRunning.get()) {
+            return;
+        }
+        interactThreadRunning.set(true);
+        Microbot.log("Starting NPC interaction watcher thread");
+        Microbot.getClientThread().runOnSeperateThread(() -> {
+            try {
+                Global.sleepUntil(() -> Rs2Widget.hasWidget("What hides would you like tanning?"), () -> {
+                    NPC ellis = Rs2Npc.getNpc(NpcID.ELLIS);
+                    if (ellis != null && Rs2Camera.isTileOnScreen(ellis.getLocalLocation())) {
+                        Microbot.log("Watcher: clicking trade on Ellis");
+                        Rs2Npc.interact(ellis, "trade");
+                    }
+                }, 10000, 200);
+            } finally {
+                interactThreadRunning.set(false);
+            }
+            return true;
+        });
+    }
 
 
     public boolean run(TannerConfig config) {
@@ -96,18 +121,18 @@ public class TannerScript extends Script {
         if (hasHides && !isTannerVisibleOnScreen) {
             Microbot.status = "Walking to Tanner";
             Microbot.log("Walking to tanner");
-            Rs2Walker.walkTo(tannerLocation);
+            Microbot.getClientThread().runOnSeperateThread(() -> {
+                Rs2Walker.walkTo(tannerLocation);
+                return true;
+            });
+            startInteractionThread();
         }
 
         if (hasHides && isTannerVisibleOnScreen) {
             if (!Rs2Widget.hasWidget("What hides would you like tanning?")) {
                 Microbot.status = "Interacting";
                 Microbot.log("Attempting to interact with Ellis");
-                boolean opened = Global.sleepUntil(() -> Rs2Widget.hasWidget("What hides would you like tanning?"), () -> {
-                    Microbot.log("Clicking trade on Ellis");
-                    Rs2Npc.interact(NpcID.ELLIS, "trade");
-                }, 3000, 200);
-                Microbot.log("Trade window opened: " + opened);
+                startInteractionThread();
             }
 
             if (Rs2Widget.hasWidget("What hides would you like tanning?")) {
