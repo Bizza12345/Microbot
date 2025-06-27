@@ -43,7 +43,8 @@ the build.
 These steps let Codex build the project in future prompts without reaching external repositories.
 
 ## Useful paths
-- All API .MD Docs `docs/api` - Search here first for relevant information when crafting scripts.
+- All API .MD Docs: `docs/api` - Search here first for relevant information when crafting scripts.
+- Microbot NaturalMouse Implementation: `https://github.com/Bizza12345/Microbot/tree/bizzadex/Improve-pie-shell-maker/runelite-client/src/main/java/net/runelite/client/plugins/microbot/util/mouse/naturalmouse`
 - Microbot scripts: `runelite-client/src/main/java/net/runelite/client/plugins/microbot`
 - Microbot utilities: `runelite-client/src/main/java/net/runelite/client/plugins/microbot/util`
 - RuneLite API sources: `runelite-api/src/main/java/net/runelite/api`
