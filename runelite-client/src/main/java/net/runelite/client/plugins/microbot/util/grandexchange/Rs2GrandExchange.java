@@ -37,6 +37,8 @@ import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import static net.runelite.client.plugins.microbot.util.Global.*;
 
@@ -714,7 +716,16 @@ public class Rs2GrandExchange {
     }
 
     public static int getItemPrice() {
-        return Integer.parseInt(Rs2Widget.getWidget(465, 27).getText().replace(" coins", ""));
+        String text = Rs2Widget.getWidget(465, 27).getText();
+        if (text == null) {
+            return -1;
+        }
+        // Extract the last number from the text which may contain additional information
+        Matcher m = Pattern.compile("(\\d+(?:,\\d+)*)\\D*$").matcher(text);
+        if (m.find()) {
+            return Integer.parseInt(m.group(1).replace(",", ""));
+        }
+        return NumberExtractor.extractNumber(text);
     }
 
     public static Widget getSlot(GrandExchangeSlots slot) {
@@ -918,6 +929,22 @@ public class Rs2GrandExchange {
             e.printStackTrace();
             return -1;
         }
+    }
+
+    /**
+     * Retrieve the price of the most recent completed buy offer for the given item.
+     *
+     * @param itemId the item ID to search for
+     * @return the price per item, or -1 if not found
+     */
+    public static int getLastBoughtPrice(int itemId) {
+        GrandExchangeOffer[] offers = Microbot.getClient().getGrandExchangeOffers();
+        for (GrandExchangeOffer offer : offers) {
+            if (offer.getItemId() == itemId && offer.getState() == GrandExchangeOfferState.BOUGHT) {
+                return offer.getPrice();
+            }
+        }
+        return -1;
     }
 
     static int getOfferQuantity() {
