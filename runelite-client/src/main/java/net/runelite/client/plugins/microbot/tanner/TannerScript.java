@@ -54,6 +54,7 @@ public class TannerScript extends Script {
                     }
                 }, 12000, 200);
             } finally {
+                Microbot.log("Interaction watcher finished");
                 interactThreadRunning.set(false);
             }
             return true;
@@ -61,7 +62,8 @@ public class TannerScript extends Script {
     }
 
     private List<HideType> parseHideList(TannerConfig config) {
-        return Arrays.stream(config.HIDE_LIST().split(","))
+        Microbot.log("Parsing hide list: " + config.HIDE_LIST());
+        List<HideType> list = Arrays.stream(config.HIDE_LIST().split(","))
                 .map(String::trim)
                 .filter(s -> !s.isEmpty())
                 .map(s -> s.toUpperCase().replace(' ', '_'))
@@ -75,6 +77,8 @@ public class TannerScript extends Script {
                 })
                 .filter(Objects::nonNull)
                 .collect(Collectors.toList());
+        Microbot.log("Parsed hide list: " + list);
+        return list;
     }
 
     public boolean run(TannerConfig config) {
@@ -82,6 +86,7 @@ public class TannerScript extends Script {
         Microbot.status = "Starting";
         mainScheduledFuture = scheduledExecutorService.scheduleWithFixedDelay(() -> {
             try {
+                Microbot.log("Script tick start");
                 if (!Microbot.isLoggedIn()) return;
                 if (!super.run()) return;
 
@@ -90,6 +95,8 @@ public class TannerScript extends Script {
 
             } catch (Exception ex) {
                 System.out.println(ex.getMessage());
+            } finally {
+                Microbot.log("Script tick end");
             }
         }, 0, 600, TimeUnit.MILLISECONDS);
         return true;
@@ -114,7 +121,10 @@ public class TannerScript extends Script {
         boolean bankVisible = Microbot.getClient().getLocalPlayer().getWorldLocation().distanceTo(BankLocation.AL_KHARID.getWorldPoint()) < 5;
         boolean hasRunEnergy = Microbot.getClient().getEnergy() > 4000;
 
-        if (hasRunEnergy) Rs2Player.toggleRunEnergy(true);
+        if (hasRunEnergy) {
+            Microbot.log("Enabling run energy");
+            Rs2Player.toggleRunEnergy(true);
+        }
 
         previousState = state;
         state = determineState(hasHides, hasMoney, hasRunEnergy, hasStamina, bankVisible, tannerVisible);
@@ -136,6 +146,7 @@ public class TannerScript extends Script {
                 Microbot.status = "Banking";
                 Microbot.log("Managing bank");
                 if (!Rs2Bank.isOpen()) {
+                    Microbot.log("Opening bank");
                     Rs2Bank.openBank();
                     break;
                 }
@@ -147,33 +158,42 @@ public class TannerScript extends Script {
                     Microbot.log("Depositing items");
                     Rs2Bank.depositAll(activeHide.getName());
                     Rs2Bank.depositAll("vial");
+                    Microbot.log("Deposited inventory");
                     if (!hasRunEnergy && !hasStamina) {
                         Microbot.log("Withdrawing stamina potion");
                         Rs2Bank.withdrawItem("Stamina potion(4)");
+                        Microbot.log("Stamina potion withdrawn");
                     }
                     if (!Rs2Bank.hasItem(activeHide.getItemName())) {
+                        Microbot.log("No hides left in bank - shutting down");
                         Rs2Bank.closeBank();
+                        Microbot.log("Bank closed");
                         Rs2Player.logout();
                         shutdown();
                         return;
                     }
                     Microbot.log("Withdrawing hides");
                     Rs2Bank.withdrawAll(false, activeHide.getItemName());
+                    Microbot.log("Hides withdrawn");
                 }
                 break;
             case WALK_TO_TANNER:
                 Microbot.status = "Walking to Tanner";
                 Microbot.log("Walking to tanner");
                 Microbot.getClientThread().runOnSeperateThread(() -> {
+                    Microbot.log("Walker thread started");
                     Rs2Walker.walkTo(tannerLocation);
+                    Microbot.log("Walker thread done");
                     return true;
                 });
+                Microbot.log("Starting interaction watcher while walking");
                 startInteractionThread();
                 break;
             case TRADING:
                 Microbot.status = "Trading";
                 Microbot.log("Interacting with Ellis");
                 if (Rs2Widget.hasWidget("What hides would you like tanning?")) {
+                    Microbot.log("Tanning widget open");
                     Widget widget = Rs2Widget.findWidget(activeHide.getWidgetName());
                     if (widget != null) {
                         Microbot.log("Selecting hide option " + activeHide.getWidgetName());
@@ -183,8 +203,10 @@ public class TannerScript extends Script {
                     }
                 } else {
                     if (Rs2Npc.interact(NpcID.ELLIS, "trade")) {
+                        Microbot.log("Clicked trade on Ellis");
                         sleepUntil(() -> Rs2Widget.hasWidget("What hides would you like tanning?"));
                     }
+                    Microbot.log("Starting interaction watcher after click");
                     startInteractionThread();
                 }
                 break;
@@ -193,6 +215,12 @@ public class TannerScript extends Script {
 
     private TannerState determineState(boolean hasHides, boolean hasMoney, boolean hasRunEnergy,
                                        boolean hasStamina, boolean bankVisible, boolean tannerVisible) {
+        Microbot.log("Determining state - hasHides=" + hasHides +
+                ", hasMoney=" + hasMoney +
+                ", runEnergyEnough=" + hasRunEnergy +
+                ", staminaInv=" + hasStamina +
+                ", bankVisible=" + bankVisible +
+                ", tannerVisible=" + tannerVisible);
         if (!hasHides || !hasMoney || (!hasRunEnergy && !hasStamina)) {
             return bankVisible ? TannerState.BANKING : TannerState.WALK_TO_BANK;
         }
