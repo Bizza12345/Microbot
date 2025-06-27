@@ -144,7 +144,9 @@ public class PieScript extends Script {
 
         int doughPrice = Rs2GrandExchange.getPrice(ItemID.PASTRY_DOUGH);
         int dishPrice = Rs2GrandExchange.getPrice(ItemID.PIE_DISH);
+
         Microbot.log("GE: Initial prices - dough: " + doughPrice + " dish: " + dishPrice);
+
 
         if (Rs2Bank.count(ItemID.COINS_995) > 0) {
             Microbot.log("GE: Withdrawing coins from bank");
@@ -156,6 +158,7 @@ public class PieScript extends Script {
         Rs2GrandExchange.openExchange();
 
         // Purchase one of each item at +99% to discover the actively traded price
+
         Microbot.log("GE: Buying one pastry dough at +99% to determine price");
         if (Rs2GrandExchange.buyItemAboveXPercent("pastry dough", 1, 99)) {
             sleepUntilOnClientThread(Rs2GrandExchange::hasFinishedBuyingOffers);
@@ -169,6 +172,7 @@ public class PieScript extends Script {
             sleepUntilOnClientThread(Rs2GrandExchange::hasFinishedBuyingOffers);
             dishPrice = Rs2GrandExchange.getLastBoughtPrice(ItemID.PIE_DISH);
             Microbot.log("GE: Determined dish price " + dishPrice);
+
             Rs2GrandExchange.collectToBank();
         }
 
@@ -179,6 +183,7 @@ public class PieScript extends Script {
         int setCost = doughPrice + dishPrice;
         int setsAffordable = coins / setCost;
         int quantity = Math.min(setsAffordable * 14, 196) - 1; // subtract the test item
+
         Microbot.log("GE: Coins after test buys " + coins + ", can afford " + setsAffordable + " sets, buying quantity " + quantity);
         if (quantity <= 0) {
             Microbot.log("GE: Quantity <= 0, exiting GE handler");
@@ -188,6 +193,7 @@ public class PieScript extends Script {
         Microbot.log("GE: Buying remaining pastry dough at price " + doughPrice);
         Rs2GrandExchange.buyItem("pastry dough", doughPrice, quantity);
         Microbot.log("GE: Buying remaining pie dishes at price " + dishPrice);
+
         Rs2GrandExchange.buyItem("pie dish", dishPrice, quantity);
         Rs2GrandExchange.collectToBank();
         Rs2GrandExchange.closeExchange();
