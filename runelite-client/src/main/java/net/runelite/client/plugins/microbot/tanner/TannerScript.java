@@ -15,6 +15,7 @@ import net.runelite.client.plugins.microbot.util.npc.Rs2Npc;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
 import net.runelite.client.plugins.microbot.util.widget.Rs2Widget;
+import net.runelite.client.plugins.microbot.util.Global;
 
 import java.util.concurrent.TimeUnit;
 
@@ -53,6 +54,9 @@ public class TannerScript extends Script {
         boolean isTannerVisibleOnScreen = tanner != null && Rs2Camera.isTileOnScreen(tanner.getLocalLocation());
         boolean isBankVisible = Microbot.getClient().getLocalPlayer().getWorldLocation().distanceTo(BankLocation.AL_KHARID.getWorldPoint()) < 5;
         boolean hasRunEnergy = Microbot.getClient().getEnergy() > 4000;
+        Microbot.log("hasHides=" + hasHides + ", hasMoney=" + hasMoney + ", staminaInInv=" + hasStamina);
+        Microbot.log("tannerVisible=" + isTannerVisibleOnScreen + ", bankVisible=" + isBankVisible);
+        Microbot.log("runEnergy=" + hasRunEnergy);
         if (hasRunEnergy) Rs2Player.toggleRunEnergy(true);
         if (isBankVisible) {
             if ((!hasRunEnergy && !hasStamina) || !hasMoney || !hasHides) {
@@ -98,10 +102,12 @@ public class TannerScript extends Script {
         if (hasHides && isTannerVisibleOnScreen) {
             if (!Rs2Widget.hasWidget("What hides would you like tanning?")) {
                 Microbot.status = "Interacting";
-                Microbot.log("Interacting with Ellis");
-                if (Rs2Npc.interact(NpcID.ELLIS, "trade")) {
-                    sleepUntil(() -> Rs2Widget.hasWidget("What hides would you like tanning?"));
-                }
+                Microbot.log("Attempting to interact with Ellis");
+                boolean opened = Global.sleepUntil(() -> Rs2Widget.hasWidget("What hides would you like tanning?"), () -> {
+                    Microbot.log("Clicking trade on Ellis");
+                    Rs2Npc.interact(NpcID.ELLIS, "trade");
+                }, 3000, 200);
+                Microbot.log("Trade window opened: " + opened);
             }
 
             if (Rs2Widget.hasWidget("What hides would you like tanning?")) {
