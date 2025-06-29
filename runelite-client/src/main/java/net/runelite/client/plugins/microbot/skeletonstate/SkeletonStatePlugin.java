@@ -6,6 +6,7 @@ import net.runelite.client.config.ConfigManager;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
+import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.ui.overlay.OverlayManager;
 
 import javax.inject.Inject;
@@ -31,8 +32,7 @@ public class SkeletonStatePlugin extends Plugin {
     @Inject
     private SkeletonStateOverlay overlay;
 
-    @Inject
-    SkeletonStateScript script;
+    private SkeletonStateScript script;
 
     String getScriptState() {
         return script != null ? script.getStateName() : "unknown";
@@ -44,13 +44,21 @@ public class SkeletonStatePlugin extends Plugin {
         if (overlayManager != null) {
             overlayManager.add(overlay);
         }
+        if (script == null) {
+            script = new SkeletonStateScript();
+        }
         script.run(config);
     }
 
     protected void shutDown() {
         Microbot.log("SkeletonStatePlugin shutting down");
-        script.shutdown();
-        overlayManager.remove(overlay);
+        if (script != null) {
+            script.shutdown();
+            script = null;
+        }
+        if (overlayManager != null) {
+            overlayManager.remove(overlay);
+        }
     }
 
     @Subscribe

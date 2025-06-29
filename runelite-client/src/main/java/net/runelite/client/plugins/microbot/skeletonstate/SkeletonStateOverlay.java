@@ -11,9 +11,12 @@ import javax.inject.Inject;
 import java.awt.*;
 
 public class SkeletonStateOverlay extends OverlayPanel {
+    private final SkeletonStatePlugin plugin;
+
     @Inject
     SkeletonStateOverlay(SkeletonStatePlugin plugin) {
         super(plugin);
+        this.plugin = plugin;
         setPosition(OverlayPosition.TOP_LEFT);
         setNaughty();
     }
