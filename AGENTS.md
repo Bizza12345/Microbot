@@ -31,16 +31,17 @@ These steps let Codex build the project in future prompts without reaching exter
 
 ## Useful paths
 - All API .MD Docs: `docs/api` - Search here FIRST AND ALWAYS for relevant information on how to communicate with the runelite API when crafting scripts and needing to reference the api.
+- Example script: `runelite-client/src/main/java/net/runelite/client/plugins/microbot/example`
 - Microbot NaturalMouse Implementation: `https://github.com/Bizza12345/Microbot/tree/bizzadex/Improve-pie-shell-maker/runelite-client/src/main/java/net/runelite/client/plugins/microbot/util/mouse/naturalmouse`
-- Important Runelite API Classes: `runelite-api/src/main/java/net/runelite/api/gameval`. DO NOT USE IMPORTS FROM `net.runelite.api.[class]`. Almost always, the gameval path `net.runelite.api.gameval.[class[` has the       correct non-depracted file, like NpcID. Using files from other paths may lead to use of deprecated methods and failing logic.
+- Important Runelite API Classes: `runelite-api/src/main/java/net/runelite/api/gameval`. DO NOT USE IMPORTS FROM `net.runelite.api.[class]`. Almost always, the gameval path `net.runelite.api.gameval.[class[` has the         correct non-depracted file, like NpcID. Using files from other paths may lead to use of deprecated methods and failing logic.
 - Microbot scripts: `runelite-client/src/main/java/net/runelite/client/plugins/microbot`
 - Microbot utilities: `runelite-client/src/main/java/net/runelite/client/plugins/microbot/util`
-- RuneLite API sources: `runelite-api/src/main/java/net/runelite/api`
+- RuneLite API sources: `runelite-api/src/main/java/net/runelite/api/gameval`
 - Runelite Items API: `runelite-api/src/main/java/net/runelite/api/gameval/ItemID.java`
 - Rs2Keyboard API: `/docs/api/Rs2Keyboard.md`
 - RuneLite plugins: `runelite-client/src/main/java/net/runelite/client/plugins`
 - Build output: `runelite-client/target` after running Maven
-- Example script: `runelite-client/src/main/java/net/runelite/client/plugins/microbot/example`
+
 
 The `docs/development.md` file contains additional guidance on creating scripts and shows code samples for common tasks.
 
