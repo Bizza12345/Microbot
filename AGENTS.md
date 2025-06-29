@@ -32,6 +32,7 @@ These steps let Codex build the project in future prompts without reaching exter
 ## Useful paths
 - All API .MD Docs: `docs/api` - Search here FIRST AND ALWAYS for relevant information on how to communicate with the runelite API when crafting scripts and needing to reference the api.
 - Microbot NaturalMouse Implementation: `https://github.com/Bizza12345/Microbot/tree/bizzadex/Improve-pie-shell-maker/runelite-client/src/main/java/net/runelite/client/plugins/microbot/util/mouse/naturalmouse`
+- Important Runelite API Classes: `runelite-api/src/main/java/net/runelite/api/gameval`. DO NOT USE IMPORTS FROM `net.runelite.api.[class]`. Almost always, the gameval path `net.runelite.api.gameval.[class[` has the       correct non-depracted file, like NpcID. Using files from other paths may lead to use of deprecated methods and failing logic.
 - Microbot scripts: `runelite-client/src/main/java/net/runelite/client/plugins/microbot`
 - Microbot utilities: `runelite-client/src/main/java/net/runelite/client/plugins/microbot/util`
 - RuneLite API sources: `runelite-api/src/main/java/net/runelite/api`
