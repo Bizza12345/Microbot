@@ -34,7 +34,10 @@ public class SkeletonStatePlugin extends Plugin {
 
     private SkeletonStateScript script;
 
-    String getScriptState() {
+    /**
+     * Expose the current script state for overlay display.
+     */
+    public String getScriptState() {
         return script != null ? script.getStateName() : "unknown";
     }
 
