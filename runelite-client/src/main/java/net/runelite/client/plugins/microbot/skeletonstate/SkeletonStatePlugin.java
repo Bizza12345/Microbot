@@ -34,6 +34,10 @@ public class SkeletonStatePlugin extends Plugin {
     @Inject
     SkeletonStateScript script;
 
+    String getScriptState() {
+        return script != null ? script.getStateName() : "unknown";
+    }
+
     @Override
     protected void startUp() throws AWTException {
         Microbot.log("SkeletonStatePlugin starting up");

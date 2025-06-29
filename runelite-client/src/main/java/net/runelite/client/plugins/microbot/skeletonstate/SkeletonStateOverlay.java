@@ -28,6 +28,9 @@ public class SkeletonStateOverlay extends OverlayPanel {
         panelComponent.getChildren().add(LineComponent.builder()
                 .left(Microbot.status)
                 .build());
+        panelComponent.getChildren().add(LineComponent.builder()
+                .left("State: " + plugin.getScriptState())
+                .build());
         return super.render(graphics);
     }
 }

@@ -2,11 +2,16 @@ package net.runelite.client.plugins.microbot.skeletonstate;
 
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.Script;
+import net.runelite.client.plugins.microbot.util.bank.Rs2Bank;
+import net.runelite.client.plugins.microbot.util.bank.enums.BankLocation;
+import net.runelite.client.plugins.microbot.util.player.Rs2Player;
+import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
 
 import java.util.concurrent.*;
 
 public class SkeletonStateScript extends Script {
     private SkeletonState state = SkeletonState.IDLE;
+    private boolean bankTaskStarted = false;
 
     /** Secondary executor for concurrent tasks */
     private final ScheduledExecutorService workerService = Executors.newScheduledThreadPool(2);
@@ -14,31 +19,40 @@ public class SkeletonStateScript extends Script {
     /** Example secondary scheduled task */
     private ScheduledFuture<?> secondaryTask;
 
+    public String getStateName() {
+        return state.name();
+    }
+
     public boolean run(SkeletonStateConfig config) {
         Microbot.log("Starting SkeletonStateScript main loop");
+        state = SkeletonState.WALK_TO_GE;
         mainScheduledFuture = scheduledExecutorService.scheduleWithFixedDelay(() -> {
             try {
                 if (!Microbot.isLoggedIn()) return;
                 if (!super.run()) return;
 
-                if (hasStateChanged()) {
-                    SkeletonState newState = updateState();
-                    Microbot.log("State changed: " + state + " -> " + newState);
-                    state = newState;
-                }
-
                 switch (state) {
-                    case FETCHING:
-                        Microbot.status = "Fetching";
-                        // TODO: fetching logic
-                        break;
-                    case PROCESSING:
-                        Microbot.status = "Processing";
-                        // TODO: processing logic
+                    case WALK_TO_GE:
+                        Microbot.status = "Walking to GE";
+                        Rs2Walker.walkWithState(BankLocation.GRAND_EXCHANGE.getWorldPoint(), 10);
+                        int distance = Rs2Player.getWorldLocation().distanceTo(BankLocation.GRAND_EXCHANGE.getWorldPoint());
+                        if (distance < 30 && !bankTaskStarted) {
+                            bankTaskStarted = true;
+                            submitAsyncTask(() -> {
+                                Microbot.log("Hovering banker");
+                                Rs2Bank.preHover();
+                                sleep(200, 400);
+                                Microbot.log("Attempting to open bank");
+                                Rs2Bank.openBank();
+                            });
+                        }
+                        if (Rs2Bank.isOpen()) {
+                            Microbot.log("Bank opened, switching to idle");
+                            state = SkeletonState.IDLE;
+                        }
                         break;
                     default:
                         Microbot.status = "Idle";
-                        // TODO: idle logic
                         break;
                 }
             } catch (Exception ex) {
@@ -71,15 +85,6 @@ public class SkeletonStateScript extends Script {
         });
     }
 
-    private boolean hasStateChanged() {
-        SkeletonState newState = updateState();
-        return state != newState;
-    }
-
-    private SkeletonState updateState() {
-        // TODO: determine state based on conditions
-        return SkeletonState.IDLE;
-    }
 
     @Override
     public void shutdown() {
