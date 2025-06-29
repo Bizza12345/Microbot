@@ -36,6 +36,7 @@ public class SkeletonStatePlugin extends Plugin {
 
     @Override
     protected void startUp() throws AWTException {
+        Microbot.log("SkeletonStatePlugin starting up");
         if (overlayManager != null) {
             overlayManager.add(overlay);
         }
@@ -43,6 +44,7 @@ public class SkeletonStatePlugin extends Plugin {
     }
 
     protected void shutDown() {
+        Microbot.log("SkeletonStatePlugin shutting down");
         script.shutdown();
         overlayManager.remove(overlay);
     }
