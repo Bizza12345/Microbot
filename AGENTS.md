@@ -45,5 +45,42 @@ These steps let Codex build the project in future prompts without reaching exter
 
 The `docs/development.md` file contains additional guidance on creating scripts and shows code samples for common tasks.
 
+## Microbot Logging
+
+Microbot provides built-in logging and status updates for scripts.
+
+- **IDE Console Output:**
+  - Use `Microbot.log("Your message here");` to print informational messages, debug data, or errors directly to the RuneLite IDE console.
+  - Example:
+    ```java
+    Microbot.log("Inventory count: " + client.getItemContainer(InventoryID.INVENTORY).getItems().length);
+    ```
+
+- **On-screen Status Overlay:**
+  - Update `Microbot.Status` at runtime to reflect the current action or state in your overlay GUI.
+  - Example:
+    ```java
+    Microbot.Status = "Banking all items";
+    ```
+
+- **Logging Levels (by convention):**
+  - Prefix messages for clarity:
+    ```java
+    Microbot.log("[DEBUG] Pathing to NPC #" + npc.getId());
+    Microbot.log("[WARN] Expected level 70 but found level " + player.getLevel(Skill.HITPOINTS));
+    Microbot.log("[ERROR] Failed to interact with object: " + gameObject.toString());
+    ```
+
+- **Exception Handling:**
+  - Always catch and log exceptions to aid debugging:
+    ```java
+    try {
+        script.run(config);
+    } catch (Exception ex) {
+        Microbot.log("[ERROR] Script execution failed: " + ex.getMessage());
+        ex.printStackTrace();
+    }
+    ```
+
 ## Current task
 - `current_task_path` - [Short description].
