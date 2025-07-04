@@ -1,7 +1,6 @@
 package net.runelite.client.plugins.microbot.skeletonstate;
 
 import net.runelite.client.plugins.microbot.Microbot;
-import net.runelite.client.ui.FontManager;
 import net.runelite.client.ui.overlay.OverlayPanel;
 import net.runelite.client.ui.overlay.OverlayPosition;
 import net.runelite.client.ui.overlay.components.LineComponent;
