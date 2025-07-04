@@ -34,9 +34,6 @@ public class SkeletonStatePlugin extends Plugin {
 
     private SkeletonStateScript script;
 
-    /**
-     * Expose the current script state for overlay display.
-     */
     public String getScriptState() {
         return script != null ? script.getStateName() : "unknown";
     }
@@ -44,24 +41,21 @@ public class SkeletonStatePlugin extends Plugin {
     @Override
     protected void startUp() throws AWTException {
         Microbot.log("SkeletonStatePlugin starting up");
-        if (overlayManager != null) {
-            overlayManager.add(overlay);
-        }
+        overlayManager.add(overlay);
         if (script == null) {
             script = new SkeletonStateScript();
         }
         script.run(config);
     }
 
+    @Override
     protected void shutDown() {
         Microbot.log("SkeletonStatePlugin shutting down");
         if (script != null) {
             script.shutdown();
             script = null;
         }
-        if (overlayManager != null) {
-            overlayManager.remove(overlay);
-        }
+        overlayManager.remove(overlay);
     }
 
     @Subscribe
