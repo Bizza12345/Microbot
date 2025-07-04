@@ -126,7 +126,7 @@ public class SkeletonStateScript extends Script {
                                 sleepUntil(
                                         () -> {
                                             int dust = Rs2Inventory.count(CHOCOLATE_DUST);
-                                            Microbot.log("[WAIT] Chocolate dust = " + dust + " / " + config.grindQuantity());
+                                            //Microbot.log("[WAIT] Chocolate dust = " + dust + " / " + config.grindQuantity());
                                             return dust >= 27;
                                         },
                                         45000
