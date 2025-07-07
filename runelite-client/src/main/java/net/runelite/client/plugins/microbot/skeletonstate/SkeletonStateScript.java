@@ -7,12 +7,12 @@ import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
 import net.runelite.client.plugins.microbot.util.bank.enums.BankLocation;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
-import net.runelite.client.plugins.microbot.util.keyboard.Rs2Keyboard;
 import net.runelite.client.plugins.microbot.util.antiban.Rs2Antiban;
 import net.runelite.client.plugins.microbot.util.antiban.Rs2AntibanSettings;
 import net.runelite.client.plugins.microbot.util.antiban.enums.Activity;
 
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
 
 public class SkeletonStateScript extends Script {
     private SkeletonState state = SkeletonState.WALK_TO_GE;
@@ -92,10 +92,11 @@ public class SkeletonStateScript extends Script {
                                         () -> Rs2Inventory.count(UNICORN_HORN_NOTED) > 0, 5000);
                                 Rs2Bank.withdrawX(PESTLE_UNNOTED, 1);
                             } else {
+                                Rs2Bank.withdrawItem(KNIFE);
                                 Rs2Bank.withdrawX(CHOCOLATE_BAR, config.grindQuantity());
                                 sleepUntilOnClientThread(
                                         () -> Rs2Inventory.count(CHOCOLATE_BAR) > 0, 5000);
-                                Rs2Bank.withdrawX(KNIFE, 1);
+
                             }
                         } else {
                             Rs2Bank.withdrawX(config.firstItemId(), config.combineQuantity());
@@ -122,14 +123,25 @@ public class SkeletonStateScript extends Script {
                                 );
                             } else {
                                 Rs2Inventory.combine(KNIFE, CHOCOLATE_BAR);
+                                Rs2Antiban.takeMicroBreakByChance();
+                                Rs2Antiban.actionCooldown();
                                 Microbot.log("[PROCESS_ITEMS] Waiting for dust count ≥ " + config.grindQuantity());
+                                AtomicLong lastCooldown = new AtomicLong();
                                 sleepUntil(
                                         () -> {
+                                            long now = System.currentTimeMillis();
+                                            if (now - lastCooldown.get() > 5000) {
+
+                                                Rs2Antiban.actionCooldown();
+                                                //Rs2Antiban.takeMicroBreakByChance();
+                                                //Microbot.log("antiban loop entered");
+                                                lastCooldown.set(now);
+                                            }
                                             int dust = Rs2Inventory.count(CHOCOLATE_DUST);
                                             //Microbot.log("[WAIT] Chocolate dust = " + dust + " / " + config.grindQuantity());
                                             return dust >= 27;
                                         },
-                                        45000
+                                        85000
                                 );
                             }
                             Microbot.log("[PROCESS_ITEMS] Grinding complete, cycling");
